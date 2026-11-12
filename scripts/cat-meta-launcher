@@ -1,0 +1,3 @@
+#!/bin/sh
+# Cat Meta 启动器；@LIBDIR@ 在安装时替换为真实路径。
+exec python3 "@LIBDIR@/run.py" "$@"

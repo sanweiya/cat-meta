@@ -1,0 +1,11 @@
+[Icon Theme]
+Name=CatMeta
+Comment=Cat Meta application icons
+Directories=scalable/apps
+
+[scalable/apps]
+Size=256
+Type=Scalable
+MinSize=16
+MaxSize=512
+Context=Applications

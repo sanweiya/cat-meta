@@ -1,0 +1,717 @@
+/* Cat Meta — Linux Mint / XApp 原生风格样式
+ *
+ * 设计原则：
+ * 1. 使用系统主题颜色、字体和原生控件，不强制浅色/深色。
+ * 2. 使用扁平分组、细边框和分隔线，避免网页式大卡片、渐变与阴影。
+ * 3. 侧栏使用 Linux Mint 的满宽高亮选中项；内容区接近 System Monitor /
+ *    System Administration 的布局。
+ */
+
+@define-color cat_green #2ec27e;
+@define-color cat_orange #e5a50a;
+@define-color cat_red #e01b24;
+@define-color cat_grey #9a9996;
+
+* {
+  outline-color: alpha(@theme_selected_bg_color, 0.55);
+  outline-offset: 1px;
+}
+
+window {
+  background-color: @theme_base_color;
+  color: @theme_fg_color;
+}
+
+/* ---------------- 标题栏 ---------------- */
+headerbar {
+  min-height: 46px;
+  padding: 0 6px;
+  background-image: none;
+  /* 直接使用 Mint-Y 的窗口标题栏颜色变量，避免比 Nemo、系统设置
+     等原生应用偏白；这些变量在浅色/深色主题下都与 CSD/SSD 一致。 */
+  background-color: @wm_bg;
+  border-bottom: 1px solid @wm_border;
+  box-shadow: inset 0 1px @wm_highlight;
+}
+
+headerbar button {
+  min-height: 26px;
+}
+
+.header-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: @theme_fg_color;
+}
+
+.header-subtitle {
+  font-size: 10px;
+  color: alpha(@theme_fg_color, 0.6);
+}
+
+/* ---------------- 侧栏 ---------------- */
+.sidebar {
+  min-width: 200px;
+  background-color: shade(@theme_bg_color, 0.97);
+  border-right: 1px solid @borders;
+}
+
+.sidebar-scroll {
+  background: transparent;
+}
+
+.sidebar-list {
+  background: transparent;
+  padding: 0;
+}
+
+.sidebar-list row {
+  border-radius: 0;
+  padding: 8px 16px;
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+.sidebar-list row:hover {
+  background-color: alpha(@theme_fg_color, 0.06);
+}
+
+.sidebar-list row:selected {
+  background-color: @theme_selected_bg_color;
+  color: #ffffff;
+}
+
+.sidebar-list row:selected image,
+.sidebar-list row:selected label {
+  color: #ffffff;
+}
+
+.sidebar-list row:selected .badge {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.sidebar-list image {
+  color: alpha(@theme_fg_color, 0.72);
+}
+
+.sidebar-list label {
+  font-size: 12px;
+}
+
+.sidebar-footer {
+  border-top: 1px solid @borders;
+  padding: 0;
+}
+
+.core-chip {
+  border-radius: 0;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+}
+
+.core-chip .core-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.core-chip .core-version {
+  font-size: 10px;
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.core-chip button {
+  min-height: 22px;
+  padding: 1px 8px;
+  font-size: 10px;
+}
+
+/* ---------------- 页面骨架 ---------------- */
+.page {
+  padding: 0;
+  background-color: @theme_base_color;
+}
+
+.page-toolbar {
+  min-height: 40px;
+  padding: 5px 18px;
+  background-color: @theme_base_color;
+  border-bottom: 1px solid alpha(@borders, 0.75);
+}
+
+.page-body {
+  padding: 12px 22px 18px 22px;
+}
+
+.section-heading {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: alpha(@theme_fg_color, 0.62);
+  margin: 4px 2px 0 2px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.section-subtitle {
+  font-size: 10px;
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.page-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.page-subtitle {
+  font-size: 10.5px;
+  color: alpha(@theme_fg_color, 0.58);
+}
+
+.dim-label {
+  color: alpha(@theme_fg_color, 0.58);
+}
+
+.tiny-label {
+  font-size: 10px;
+  color: alpha(@theme_fg_color, 0.56);
+}
+
+.error-label {
+  font-size: 10.5px;
+  color: @cat_red;
+}
+
+.destructive {
+  color: @cat_red;
+}
+
+.mono {
+  font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+}
+
+/* ---------------- 分组与列表 ---------------- */
+.native-group,
+.card {
+  background-color: @theme_base_color;
+  border: 1px solid @borders;
+  border-radius: 2px;
+}
+
+.card-pad {
+  padding: 12px 14px;
+}
+
+.native-row {
+  padding: 9px 14px;
+}
+
+.native-row + .native-row,
+.settings-row + .settings-row {
+  border-top: 1px solid alpha(@borders, 0.7);
+}
+
+.native-stats {
+  border: 1px solid @borders;
+  border-radius: 2px;
+  background-color: @theme_base_color;
+}
+
+.stat-cell {
+  padding: 9px 14px;
+}
+
+.stat-cell + .stat-cell {
+  border-left: 1px solid alpha(@borders, 0.7);
+}
+
+.stat-title {
+  font-size: 9.5px;
+  color: alpha(@theme_fg_color, 0.57);
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  font-feature-settings: "tnum";
+}
+
+.stat-unit {
+  font-size: 9.5px;
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.list-card {
+  background-color: @theme_base_color;
+  border: 1px solid @borders;
+  border-radius: 2px;
+}
+
+.list-header {
+  padding: 6px 12px;
+  background-color: shade(@theme_bg_color, 0.985);
+  border-bottom: 1px solid @borders;
+}
+
+.list-header label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: alpha(@theme_fg_color, 0.6);
+}
+
+/* ---------------- 按钮与标签 ---------------- */
+button {
+  border-radius: 4px;
+}
+
+button.primary {
+  background-image: none;
+  background-color: @theme_selected_bg_color;
+  border: 1px solid shade(@theme_selected_bg_color, 0.9);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 5px 12px;
+  text-shadow: none;
+  box-shadow: none;
+}
+
+button.primary:hover {
+  background-color: shade(@theme_selected_bg_color, 1.08);
+}
+
+button.primary:active {
+  background-color: shade(@theme_selected_bg_color, 0.9);
+}
+
+button.primary:disabled {
+  opacity: 1;
+  background-image: none;
+  background-color: alpha(@theme_fg_color, 0.09);
+  border-color: alpha(@borders, 0.55);
+  color: alpha(@theme_fg_color, 0.38);
+}
+
+button.pill {
+  border-radius: 3px;
+  padding: 2px 9px;
+  min-height: 21px;
+  font-size: 10px;
+}
+
+button.icon-button {
+  padding: 4px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+button.flat {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+button.flat:hover {
+  background-color: alpha(@theme_fg_color, 0.07);
+}
+
+.badge {
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  background-color: alpha(@theme_fg_color, 0.075);
+  color: alpha(@theme_fg_color, 0.7);
+}
+
+.badge-accent {
+  background-color: alpha(@theme_selected_bg_color, 0.14);
+  color: @theme_selected_bg_color;
+}
+
+.badge-green {
+  background-color: alpha(@cat_green, 0.14);
+  color: shade(@cat_green, 0.8);
+}
+
+.badge-orange {
+  background-color: alpha(@cat_orange, 0.16);
+  color: shade(@cat_orange, 0.78);
+}
+
+.badge-red {
+  background-color: alpha(@cat_red, 0.13);
+  color: @cat_red;
+}
+
+.status-dot {
+  font-size: 12px;
+  color: @cat_grey;
+}
+
+.status-dot.running {
+  color: @cat_green;
+}
+
+.status-dot.starting {
+  color: @cat_orange;
+}
+
+.status-dot.error {
+  color: @cat_red;
+}
+
+/* ---------------- 概览 ---------------- */
+.status-summary {
+  padding: 13px 16px;
+}
+
+.status-summary .status-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.status-summary .status-subtitle {
+  font-size: 10.5px;
+  color: alpha(@theme_fg_color, 0.6);
+}
+
+.status-summary .current-node {
+  margin-top: 3px;
+}
+
+.current-node image {
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.current-node-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: @theme_fg_color;
+}
+
+.current-node-group {
+  font-size: 9.5px;
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.traffic-panel {
+  background-color: @theme_base_color;
+  border: 1px solid @borders;
+  border-radius: 2px;
+}
+
+.chart-frame {
+  padding: 4px 12px 2px 12px;
+}
+
+.legend-dot {
+  font-size: 9px;
+}
+
+.profile-summary {
+  padding: 12px 14px;
+}
+
+.profile-summary .name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profile-summary .meta {
+  font-size: 10px;
+  color: alpha(@theme_fg_color, 0.58);
+}
+
+/* ---------------- 设置 ---------------- */
+.settings-note {
+  padding: 12px 14px;
+}
+
+.settings-group-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: alpha(@theme_fg_color, 0.62);
+  margin: 8px 2px 6px 2px;
+}
+
+.settings-row {
+  padding: 9px 14px;
+}
+
+.settings-row .row-title {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.settings-row .row-subtitle {
+  font-size: 9.5px;
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.settings-row spinbutton,
+.settings-row entry {
+  min-height: 26px;
+}
+
+.about-hero {
+  padding: 14px;
+}
+
+/* ---------------- 订阅 ---------------- */
+.profile-card {
+  background-color: transparent;
+  border: none;
+  border-bottom: 1px solid alpha(@borders, 0.7);
+  border-radius: 0;
+  padding: 11px 14px;
+}
+
+.profile-card.active {
+  background-color: alpha(@theme_fg_color, 0.035);
+}
+
+.profile-card:hover {
+  background-color: alpha(@theme_fg_color, 0.035);
+}
+
+.profile-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profile-kind {
+  font-size: 9.5px;
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.state-active {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: @theme_selected_bg_color;
+}
+
+.profile-url {
+  font-size: 9.5px;
+  color: alpha(@theme_fg_color, 0.5);
+}
+
+.profile-meta {
+  font-size: 9.5px;
+  color: alpha(@theme_fg_color, 0.6);
+}
+
+/* ---------------- 表格 ---------------- */
+treeview {
+  background-color: @theme_base_color;
+}
+
+treeview.view {
+  border-left-color: transparent;
+  border-top-color: transparent;
+  padding: 3px;
+}
+
+/* 节点表使用更小的行内边距，配合较小的操作按钮获得紧凑行高。 */
+treeview.node-list.view {
+  padding: 1px 3px;
+}
+
+treeview.view:selected {
+  background-color: @theme_selected_bg_color;
+  color: #ffffff;
+}
+
+treeview header button {
+  background-image: none;
+  background-color: shade(@theme_bg_color, 0.985);
+  border: none;
+  border-right: 1px solid alpha(@theme_fg_color, 0.28);
+  border-bottom: 1px solid @borders;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: alpha(@theme_fg_color, 0.6);
+  padding: 5px 8px;
+}
+
+treeview.node-list header button {
+  font-size: 11px;
+}
+
+treeview header button:last-child {
+  border-right: none;
+}
+
+scrolledwindow {
+  background: transparent;
+}
+
+/* ---------------- 日志 ---------------- */
+.log-view {
+  background-color: @theme_base_color;
+  color: @theme_fg_color;
+  padding: 0;
+}
+
+.log-view text,
+.log-view border {
+  background-color: @theme_base_color;
+  background-image: none;
+}
+
+/* ---------------- 其他 ---------------- */
+.empty-state {
+  padding: 38px 20px;
+}
+
+.empty-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty-subtitle {
+  font-size: 10.5px;
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.spinner {
+  color: @theme_selected_bg_color;
+}
+
+link,
+button.link {
+  color: @theme_selected_bg_color;
+}
+
+flowboxchild {
+  background: transparent;
+  padding: 0;
+}
+
+/* 兼容旧组件中的次要视觉元素 */
+.hero-card {
+  background-color: @theme_base_color;
+  background-image: none;
+  border: 1px solid @borders;
+  border-radius: 2px;
+  padding: 13px 16px;
+}
+
+.stat-card {
+  background-color: @theme_base_color;
+  border: 1px solid @borders;
+  border-radius: 2px;
+  padding: 9px 12px;
+}
+
+.status-icon {
+  padding: 4px;
+  background-color: transparent;
+  color: @theme_fg_color;
+}
+
+.quick-row {
+  padding: 8px 14px;
+}
+
+.quick-row + .quick-row {
+  border-top: 1px solid alpha(@borders, 0.7);
+}
+
+.row-title {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.row-subtitle {
+  font-size: 9.5px;
+  color: alpha(@theme_fg_color, 0.55);
+}
+
+.group-chip,
+.proxy-card {
+  border-radius: 2px;
+}
+
+.latency-good {
+  color: @cat_green;
+}
+
+.latency-medium {
+  color: shade(@cat_orange, 0.78);
+}
+
+.latency-bad {
+  color: @cat_red;
+}
+
+.latency-timeout {
+  color: alpha(@theme_fg_color, 0.42);
+}
+
+.latency-badge {
+  border-radius: 2px;
+  padding: 0 4px;
+  font-size: 8.5px;
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  background-color: transparent;
+}
+
+.check {
+  color: @theme_selected_bg_color;
+  font-weight: 700;
+}
+
+/* ---------------- 自绘托盘菜单（原生菜单不可用时的回退） ---------------- */
+.tray-popup {
+  background-color: @theme_base_color;
+  border: 1px solid @borders;
+  padding: 2px;
+}
+
+.tray-popup-header {
+  padding: 4px 8px 3px 8px;
+}
+
+.tray-popup-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: alpha(@theme_fg_color, 0.62);
+}
+
+.tray-popup-item {
+  border-radius: 2px;
+  border: none;
+  background: transparent;
+  padding: 3px 8px;
+  min-height: 20px;
+}
+
+.tray-popup-item:hover {
+  background-color: alpha(@theme_selected_bg_color, 0.13);
+}
+
+.tray-popup-item label {
+  font-size: 11px;
+}
+
+.tray-popup-separator {
+  margin: 2px 4px;
+  background-color: alpha(@borders, 0.8);
+}
+
+.tray-popup-mode {
+  padding: 2px 8px;
+}
+
+.tray-popup-mode combobox button {
+  min-height: 20px;
+  padding: 0 4px;
+  font-size: 10px;
+}

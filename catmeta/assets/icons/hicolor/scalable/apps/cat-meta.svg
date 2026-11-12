@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070f1f"/>
+      <stop offset="0.55" stop-color="#102a56"/>
+      <stop offset="1" stop-color="#1e40af"/>
+    </linearGradient>
+    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#93c5fd"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="38%" r="62%">
+      <stop offset="0" stop-color="#3b82f6" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#bg)"/>
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#glow)"/>
+  <circle cx="128" cy="124" r="82" fill="none" stroke="#3b82f6" stroke-opacity="0.15" stroke-width="1.5"/>
+  <path d="M64 172 V86 L128 144 L192 86 V172" fill="none" stroke="url(#stroke)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="64" cy="172" r="9" fill="#bfdbfe"/>
+  <circle cx="192" cy="172" r="9" fill="#93c5fd"/>
+  <circle cx="128" cy="144" r="9" fill="#eff6ff"/>
+</svg>
