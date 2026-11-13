@@ -111,7 +111,7 @@ class SettingsPage(BasePage):
 
     def _button(self, text: str, callback: Callable[[], None], *, icon_name: str | None = None) -> Gtk.Button:
         button = Gtk.Button(label=text)
-        button.get_style_context().add_class("pill")
+        button.get_style_context().add_class("settings-action")
         if icon_name:
             button.set_image(icon(icon_name, 14))
             button.set_always_show_image(True)

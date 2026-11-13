@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 import time
 
 import cairo
@@ -34,10 +33,10 @@ COLUMN_LABELS = {
     "actions": "操作",
 }
 ACTION_COLUMN_WIDTH = 118
-ACTION_BUTTON_WIDTH = 50
-ACTION_BUTTON_HEIGHT = 22
+ACTION_BUTTON_WIDTH = 48
+ACTION_BUTTON_HEIGHT = 26
 ACTION_BUTTON_GAP = 8
-ACTION_HEIGHT = 26
+ACTION_HEIGHT = 30
 
 GROUP_TYPES = {"Selector", "URLTest", "Fallback", "LoadBalance", "Relay"}
 TYPE_LABELS = {
@@ -113,22 +112,14 @@ class CheckCellRenderer(BaselineCellRendererText):
         cr.restore()
 
 
-def _rounded_rect(cr, x: float, y: float, width: float, height: float, radius: float) -> None:
-    radius = min(radius, width / 2, height / 2)
-    cr.new_sub_path()
-    cr.arc(x + width - radius, y + radius, radius, -math.pi / 2, 0)
-    cr.arc(x + width - radius, y + height - radius, radius, 0, math.pi / 2)
-    cr.arc(x + radius, y + height - radius, radius, math.pi / 2, math.pi)
-    cr.arc(x + radius, y + radius, radius, math.pi, 1.5 * math.pi)
-    cr.close_path()
-
-
 class ActionCellRenderer(Gtk.CellRenderer):
     """在树形列表单元格内绘制两个原生风格的迷你按钮。"""
 
     def __init__(self):
         super().__init__()
         self.set_property("mode", Gtk.CellRendererMode.ACTIVATABLE)
+        # 用真实 Gtk.Button 的 style context 绘制，保证跟随主题的原生按钮外观。
+        self._probe = Gtk.Button(label="连接")
         self.set_property("xpad", 0)
         self.set_property("ypad", 0)
         self.connected = False
@@ -154,12 +145,6 @@ class ActionCellRenderer(Gtk.CellRenderer):
         return (ACTION_HEIGHT, ACTION_HEIGHT)
 
     def do_render(self, cr, widget, _background_area, cell_area, flags):
-        selected = bool(flags & Gtk.CellRendererState.SELECTED)
-        context = widget.get_style_context()
-        foreground = context.get_color(Gtk.StateFlags.NORMAL)
-        red, green, blue = foreground.red, foreground.green, foreground.blue
-        if selected:
-            red = green = blue = 1.0
         total = ACTION_BUTTON_WIDTH * 2 + ACTION_BUTTON_GAP
         left = cell_area.x + max(0.0, (cell_area.width - total) / 2)
         top = cell_area.y + max(0.0, (cell_area.height - ACTION_BUTTON_HEIGHT) / 2)
@@ -168,33 +153,29 @@ class ActionCellRenderer(Gtk.CellRenderer):
             disabled = index == 0 and self.connected
             hovered = self.hover_action == action_id and abs(cell_area.y - self.hover_y) < 2.0
             pressed = self.pressed_action == action_id and abs(cell_area.y - self.pressed_y) < 2.0
+            state = Gtk.StateFlags.NORMAL
             if disabled:
-                fill_alpha, border_alpha, text_alpha = 0.04, 0.18, 0.32
+                state = Gtk.StateFlags.INSENSITIVE
             elif pressed:
-                fill_alpha, border_alpha, text_alpha = (0.36, 0.95, 1.0) if selected else (0.24, 0.88, 1.0)
+                state = Gtk.StateFlags.ACTIVE
             elif hovered:
-                fill_alpha, border_alpha, text_alpha = (0.30, 0.92, 1.0) if selected else (0.17, 0.72, 1.0)
-            elif selected:
-                fill_alpha, border_alpha, text_alpha = 0.20, 0.78, 0.92
-            else:
-                fill_alpha, border_alpha, text_alpha = 0.10, 0.42, 0.92
+                state = Gtk.StateFlags.PRELIGHT
             x = left + index * (ACTION_BUTTON_WIDTH + ACTION_BUTTON_GAP)
-            cr.save()
-            _rounded_rect(cr, x, top, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT, 3)
-            cr.set_source_rgba(red, green, blue, fill_alpha)
-            cr.fill_preserve()
-            cr.set_source_rgba(red, green, blue, border_alpha)
-            cr.set_line_width(1.0)
-            cr.stroke()
+            context = self._probe.get_style_context()
+            context.save()
+            context.set_state(state)
+            Gtk.render_background(context, cr, x, top, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT)
+            Gtk.render_frame(context, cr, x, top, ACTION_BUTTON_WIDTH, ACTION_BUTTON_HEIGHT)
+            color = context.get_color(state)
+            font = context.get_font(state)
             layout = widget.create_pango_layout(text)
-            font = context.get_font(Gtk.StateFlags.NORMAL)
             if font is not None:
                 layout.set_font_description(font)
             text_width, text_height = layout.get_pixel_size()
             cr.move_to(x + (ACTION_BUTTON_WIDTH - text_width) / 2, top + (ACTION_BUTTON_HEIGHT - text_height) / 2)
-            cr.set_source_rgba(red, green, blue, text_alpha)
+            cr.set_source_rgba(color.red, color.green, color.blue, color.alpha)
             PangoCairo.show_layout(cr, layout)
-            cr.restore()
+            context.restore()
 
 
 class ProxiesPage(BasePage):

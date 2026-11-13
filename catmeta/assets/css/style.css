@@ -5,6 +5,9 @@
  * 2. 使用扁平分组、细边框和分隔线，避免网页式大卡片、渐变与阴影。
  * 3. 侧栏使用 Linux Mint 的满宽高亮选中项；内容区接近 System Monitor /
  *    System Administration 的布局。
+ *
+ * 字号：13.33px = 10pt（正常），12px = 9pt（次要）。列表、图表和日志
+ * 保持各自的紧凑字号，不参与这组尺寸。
  */
 
 @define-color cat_green #2ec27e;
@@ -12,12 +15,7 @@
 @define-color cat_red #e01b24;
 @define-color cat_grey #9a9996;
 
-* {
-  outline-color: alpha(@theme_selected_bg_color, 0.55);
-  outline-offset: 1px;
-}
-
-window {
+.catmeta-window {
   background-color: @theme_base_color;
   color: @theme_fg_color;
 }
@@ -26,27 +24,34 @@ window {
 headerbar {
   min-height: 46px;
   padding: 0 6px;
-  background-image: none;
-  /* 直接使用 Mint-Y 的窗口标题栏颜色变量，避免比 Nemo、系统设置
-     等原生应用偏白；这些变量在浅色/深色主题下都与 CSD/SSD 一致。 */
-  background-color: @wm_bg;
-  border-bottom: 1px solid @wm_border;
-  box-shadow: inset 0 1px @wm_highlight;
 }
+
 
 headerbar button {
   min-height: 26px;
 }
 
+/* Yaru 的标题按钮默认是 26×26 的圆形，通用 min-height 会把它们拉成椭圆。 */
+headerbar button.titlebutton {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
+  margin: 0;
+}
+
 .header-title {
-  font-size: 13px;
+  font-size: 13.33px;
   font-weight: 700;
-  color: @theme_fg_color;
 }
 
 .header-subtitle {
-  font-size: 10px;
-  color: alpha(@theme_fg_color, 0.6);
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.menu-accel {
+  font-size: 12px;
+  color: alpha(@theme_fg_color, 0.5);
 }
 
 /* ---------------- 侧栏 ---------------- */
@@ -67,7 +72,7 @@ headerbar button {
 
 .sidebar-list row {
   border-radius: 0;
-  padding: 8px 16px;
+  padding: 11px 16px;
   margin: 0;
   border: none;
   background: transparent;
@@ -97,6 +102,11 @@ headerbar button {
 }
 
 .sidebar-list label {
+  font-size: 13.33px;
+}
+
+/* 侧栏计数徽标使用次要字号，避免继承导航项的正常字号。 */
+.sidebar-list .badge {
   font-size: 12px;
 }
 
@@ -113,20 +123,15 @@ headerbar button {
 }
 
 .core-chip .core-name {
-  font-size: 12px;
+  font-size: 13.33px;
   font-weight: 600;
 }
 
 .core-chip .core-version {
-  font-size: 10px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.55);
 }
 
-.core-chip button {
-  min-height: 22px;
-  padding: 1px 8px;
-  font-size: 10px;
-}
 
 /* ---------------- 页面骨架 ---------------- */
 .page {
@@ -146,29 +151,29 @@ headerbar button {
 }
 
 .section-heading {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   color: alpha(@theme_fg_color, 0.62);
   margin: 4px 2px 0 2px;
 }
 
 .section-title {
-  font-size: 11px;
+  font-size: 13.33px;
   font-weight: 700;
 }
 
 .section-subtitle {
-  font-size: 10px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.55);
 }
 
 .page-title {
-  font-size: 15px;
+  font-size: 13.33px;
   font-weight: 700;
 }
 
 .page-subtitle {
-  font-size: 10.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.58);
 }
 
@@ -177,12 +182,12 @@ headerbar button {
 }
 
 .tiny-label {
-  font-size: 10px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.56);
 }
 
 .error-label {
-  font-size: 10.5px;
+  font-size: 13.33px;
   color: @cat_red;
 }
 
@@ -230,18 +235,19 @@ headerbar button {
 }
 
 .stat-title {
-  font-size: 9.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.57);
 }
 
 .stat-value {
-  font-size: 18px;
+  /* 统计大数字是展示型字号，不参与正文 10pt/9pt 规范。 */
+  font-size: 23px;
   font-weight: 600;
   font-feature-settings: "tnum";
 }
 
 .stat-unit {
-  font-size: 9.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.55);
 }
 
@@ -295,11 +301,21 @@ button.primary:disabled {
   color: alpha(@theme_fg_color, 0.38);
 }
 
+button.settings-action {
+  padding: 4px 10px;
+}
+
+button.footer-action {
+  padding: 5px 12px;
+  font-weight: 600;
+}
+
+
 button.pill {
   border-radius: 3px;
   padding: 2px 9px;
   min-height: 21px;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 button.icon-button {
@@ -321,7 +337,7 @@ button.flat:hover {
 .badge {
   border-radius: 2px;
   padding: 1px 5px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   background-color: alpha(@theme_fg_color, 0.075);
   color: alpha(@theme_fg_color, 0.7);
@@ -348,7 +364,7 @@ button.flat:hover {
 }
 
 .status-dot {
-  font-size: 12px;
+  font-size: 13.33px;
   color: @cat_grey;
 }
 
@@ -370,12 +386,12 @@ button.flat:hover {
 }
 
 .status-summary .status-title {
-  font-size: 14px;
+  font-size: 13.33px;
   font-weight: 700;
 }
 
 .status-summary .status-subtitle {
-  font-size: 10.5px;
+  font-size: 13.33px;
   color: alpha(@theme_fg_color, 0.6);
 }
 
@@ -388,13 +404,13 @@ button.flat:hover {
 }
 
 .current-node-value {
-  font-size: 12px;
+  font-size: 13.33px;
   font-weight: 600;
   color: @theme_fg_color;
 }
 
 .current-node-group {
-  font-size: 9.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.55);
 }
 
@@ -417,12 +433,12 @@ button.flat:hover {
 }
 
 .profile-summary .name {
-  font-size: 12px;
+  font-size: 13.33px;
   font-weight: 600;
 }
 
 .profile-summary .meta {
-  font-size: 10px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.58);
 }
 
@@ -432,7 +448,7 @@ button.flat:hover {
 }
 
 .settings-group-title {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   color: alpha(@theme_fg_color, 0.62);
   margin: 8px 2px 6px 2px;
@@ -443,12 +459,12 @@ button.flat:hover {
 }
 
 .settings-row .row-title {
-  font-size: 11.5px;
+  font-size: 13.33px;
   font-weight: 600;
 }
 
 .settings-row .row-subtitle {
-  font-size: 9.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.55);
 }
 
@@ -479,28 +495,28 @@ button.flat:hover {
 }
 
 .profile-title {
-  font-size: 12px;
+  font-size: 13.33px;
   font-weight: 600;
 }
 
 .profile-kind {
-  font-size: 9.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.55);
 }
 
 .state-active {
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 600;
   color: @theme_selected_bg_color;
 }
 
 .profile-url {
-  font-size: 9.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.5);
 }
 
 .profile-meta {
-  font-size: 9.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.6);
 }
 
@@ -520,7 +536,7 @@ treeview.view:selected {
   color: #ffffff;
 }
 
-treeview header button {
+treeview.view.data-list header button {
   background-image: none;
   background-color: shade(@theme_bg_color, 0.985);
   border: none;
@@ -534,7 +550,7 @@ treeview header button {
   padding: 5px 8px;
 }
 
-treeview header button:last-child {
+treeview.view.data-list header button:last-child {
   border-right: none;
 }
 
@@ -561,12 +577,12 @@ scrolledwindow {
 }
 
 .empty-title {
-  font-size: 14px;
+  font-size: 13.33px;
   font-weight: 600;
 }
 
 .empty-subtitle {
-  font-size: 10.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.55);
 }
 
@@ -615,12 +631,12 @@ flowboxchild {
 }
 
 .row-title {
-  font-size: 11.5px;
+  font-size: 13.33px;
   font-weight: 600;
 }
 
 .row-subtitle {
-  font-size: 9.5px;
+  font-size: 12px;
   color: alpha(@theme_fg_color, 0.55);
 }
 
@@ -648,7 +664,7 @@ flowboxchild {
 .latency-badge {
   border-radius: 2px;
   padding: 0 4px;
-  font-size: 8.5px;
+  font-size: 12px;
   font-weight: 600;
   font-feature-settings: "tnum";
   background-color: transparent;
@@ -671,7 +687,7 @@ flowboxchild {
 }
 
 .tray-popup-title {
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 700;
   color: alpha(@theme_fg_color, 0.62);
 }
@@ -689,7 +705,7 @@ flowboxchild {
 }
 
 .tray-popup-item label {
-  font-size: 11px;
+  font-size: 13.33px;
 }
 
 .tray-popup-separator {
@@ -704,5 +720,31 @@ flowboxchild {
 .tray-popup-mode combobox button {
   min-height: 20px;
   padding: 0 4px;
-  font-size: 10px;
+  font-size: 12px;
+}
+
+/* Yaru 的非 CSD 弹出菜单默认是直角；统一成主题菜单的圆角。 */
+menu,
+.menu,
+.context-menu {
+  border-radius: 6px;
+}
+
+/* 浮动提示：使用窗口主题色，不依赖 InfoBar 的消息类型配色。 */
+.app-toast {
+  background-color: @theme_bg_color;
+  color: @theme_fg_color;
+  border: 1px solid @borders;
+  border-radius: 8px;
+  padding: 8px 10px 8px 12px;
+}
+
+.app-toast.error .app-toast-icon {
+  color: @cat_red;
+}
+
+.app-toast-close {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
 }

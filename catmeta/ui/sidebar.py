@@ -93,7 +93,7 @@ class Sidebar(Gtk.Box):
         self.toggle_button = Gtk.Button(label="启动")
         self.toggle_button.set_tooltip_text("启动内核")
         self.toggle_button.set_valign(Gtk.Align.CENTER)
-        self.toggle_button.get_style_context().add_class("pill")
+        self.toggle_button.get_style_context().add_class("footer-action")
         self.toggle_button.connect("clicked", lambda _b: on_toggle_core())
         core_chip.pack_end(self.toggle_button, False, False, 0)
         footer.pack_start(core_chip, False, False, 0)

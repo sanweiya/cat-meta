@@ -67,6 +67,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_default_size(content_width, content_height)
         self.set_size_request(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
         self.set_wmclass("cat-meta", "CatMeta")
+        self.get_style_context().add_class("catmeta-window")
         try:
             self.set_role("cat-meta")
         except Exception:
@@ -85,7 +86,7 @@ class MainWindow(Gtk.ApplicationWindow):
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.content_overlay = Gtk.Overlay()
         self.content_overlay.add(content)
-        self._build_info_bar(self.content_overlay)
+        self._build_toast(self.content_overlay)
 
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.NONE)
@@ -117,6 +118,15 @@ class MainWindow(Gtk.ApplicationWindow):
         if self.controller.settings.window_maximized:
             self.maximize()
         self._register_actions()
+        self._disable_click_focus(self)
+
+    def _disable_click_focus(self, widget: Gtk.Widget) -> None:
+        """鼠标点击不抢键盘焦点，避免原生按钮/下拉框出现焦点框。"""
+        if isinstance(widget, (Gtk.Button, Gtk.ComboBox, Gtk.Switch, Gtk.CheckButton)):
+            widget.set_focus_on_click(False)
+        if isinstance(widget, Gtk.Container):
+            for child in widget.get_children():
+                self._disable_click_focus(child)
 
     # ---------------- 标题栏 ----------------
     def _build_header(self) -> None:
@@ -135,20 +145,11 @@ class MainWindow(Gtk.ApplicationWindow):
         title_box.pack_start(self.header_subtitle, False, False, 0)
         header.set_custom_title(title_box)
 
-        menu_button = Gtk.MenuButton()
-        menu_button.set_image(icon("open-menu-symbolic", 16))
-        menu_button.set_tooltip_text("主菜单")
-        menu_button.set_relief(Gtk.ReliefStyle.NONE)
-        menu_button.get_style_context().add_class("flat")
-        menu = Gio.Menu()
-        menu.append("重启内核", "win.restart")
-        menu.append("切换系统代理", "win.toggle-system-proxy")
-        menu.append("打开配置目录", "win.open-data")
-        menu.append("设置", "win.settings")
-        menu.append("键盘快捷键", "win.shortcuts")
-        menu.append("关于 Cat Meta", "win.about")
-        menu.append("退出", "app.quit")
-        menu_button.set_popover(Gtk.Popover.new_from_model(menu_button, menu))
+        self.menu_button = Gtk.Button()
+        self.menu_button.set_image(icon("open-menu-symbolic", 16))
+        self.menu_button.set_tooltip_text("主菜单")
+        self.menu_button.connect("clicked", self._popup_main_menu)
+        self.main_menu = self._build_main_menu()
         self.header_mode = Gtk.ComboBoxText()
         block_scroll(self.header_mode)
         self.header_mode.set_tooltip_text("代理模式")
@@ -156,29 +157,81 @@ class MainWindow(Gtk.ApplicationWindow):
         for mode in ("rule", "global", "direct"):
             self.header_mode.append(mode, f"{MODE_LABELS[mode]}模式")
         self.header_mode.connect("changed", self._on_mode_combo_changed)
-        header.pack_end(menu_button)
+        header.pack_end(self.menu_button)
         header.pack_end(self.header_mode)
 
-    def _build_info_bar(self, parent: Gtk.Overlay) -> None:
-        """原生 Gtk.InfoBar，以覆盖层显示，不参与页面布局。"""
-        self.info_revealer = Gtk.Revealer()
-        self.info_revealer.set_transition_type(Gtk.RevealerTransitionType.SLIDE_UP)
-        self.info_revealer.set_transition_duration(180)
-        self.info_revealer.set_reveal_child(False)
-        self.info_revealer.set_halign(Gtk.Align.FILL)
-        self.info_revealer.set_valign(Gtk.Align.END)
-        self.info_revealer.set_hexpand(True)
-        self.info_bar = Gtk.InfoBar()
-        self.info_bar.set_show_close_button(True)
-        self.info_bar.set_message_type(Gtk.MessageType.INFO)
-        self.info_label = label("", wrap=True, max_width=110)
-        self.info_label.set_xalign(0)
-        self.info_bar.get_content_area().pack_start(self.info_label, True, True, 0)
-        self.info_bar.connect("response", self._on_info_bar_response)
-        self.info_revealer.add(self.info_bar)
-        parent.add_overlay(self.info_revealer)
-        self.info_revealer.set_visible(False)
-        self.info_revealer.set_no_show_all(True)
+    def _build_main_menu(self) -> Gtk.Menu:
+        menu = Gtk.Menu()
+        # 不预留复选框/单选框的图标列，否则菜单左侧会空出一列。
+        menu.set_reserve_toggle_size(False)
+
+        def add(text: str, icon_name: str, callback, accel: str = "") -> None:
+            item = Gtk.MenuItem()
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.pack_start(icon(icon_name, 16), False, False, 0)
+            row.pack_start(label(text), True, True, 0)
+            if accel:
+                row.pack_end(label(accel, "menu-accel"), False, False, 0)
+            item.add(row)
+            item.connect("activate", lambda _item: callback())
+            menu.append(item)
+
+        add("重启内核", "view-refresh-symbolic", self.restart_core, "Ctrl+R")
+        menu.append(Gtk.SeparatorMenuItem())
+        add("键盘快捷键", "preferences-desktop-keyboard-symbolic", self.show_shortcuts)
+        menu.append(Gtk.SeparatorMenuItem())
+        add("关于 Cat Meta", "help-about-symbolic", self.show_about)
+        add("退出", "system-log-out-symbolic", self.app.quit_app, "Ctrl+Q")
+        menu.show_all()
+        return menu
+
+    def _popup_main_menu(self, button: Gtk.Button) -> None:
+        allocation = button.get_allocation()
+        rect = Gdk.Rectangle()
+        # 原生按钮的绘制区域比 allocation 略窄；向内收 12px，让菜单右缘
+        # 与按钮可见右缘对齐，而不是与透明内边距对齐。
+        rect.x = allocation.x + allocation.width - 12
+        rect.y = allocation.y + allocation.height
+        rect.width = 0
+        rect.height = 0
+        window = button.get_window() or self.get_window()
+        if window is not None:
+            self.main_menu.popup_at_rect(
+                window, rect, Gdk.Gravity.SOUTH_EAST, Gdk.Gravity.NORTH_EAST, None
+            )
+
+    def _build_toast(self, parent: Gtk.Overlay) -> None:
+        """底部居中的浮动提示，使用主题色而非 InfoBar 的消息条配色。"""
+        self.toast_revealer = Gtk.Revealer()
+        self.toast_revealer.set_transition_type(Gtk.RevealerTransitionType.SLIDE_UP)
+        self.toast_revealer.set_transition_duration(160)
+        self.toast_revealer.set_reveal_child(False)
+        self.toast_revealer.set_halign(Gtk.Align.CENTER)
+        self.toast_revealer.set_valign(Gtk.Align.END)
+        self.toast_revealer.set_margin_bottom(18)
+        self.toast_revealer.set_margin_start(18)
+        self.toast_revealer.set_margin_end(18)
+
+        self.toast_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.toast_box.get_style_context().add_class("app-toast")
+        self.toast_icon = icon("dialog-information-symbolic", 16)
+        self.toast_icon.get_style_context().add_class("app-toast-icon")
+        self.toast_label = label("", wrap=True, max_width=72)
+        self.toast_label.set_xalign(0)
+        close = Gtk.Button()
+        close.set_image(icon("window-close-symbolic", 16))
+        close.set_relief(Gtk.ReliefStyle.NONE)
+        close.set_tooltip_text("关闭提示")
+        close.get_style_context().add_class("flat")
+        close.get_style_context().add_class("app-toast-close")
+        close.connect("clicked", lambda _b: self._dismiss_toast())
+        self.toast_box.pack_start(self.toast_icon, False, False, 0)
+        self.toast_box.pack_start(self.toast_label, True, True, 0)
+        self.toast_box.pack_end(close, False, False, 0)
+        self.toast_revealer.add(self.toast_box)
+        parent.add_overlay(self.toast_revealer)
+        self.toast_revealer.set_visible(False)
+        self.toast_revealer.set_no_show_all(True)
 
     # ---------------- 页面 ----------------
     def _create_pages(self) -> None:
@@ -447,27 +500,34 @@ class MainWindow(Gtk.ApplicationWindow):
         if self._toast_source:
             GLib.source_remove(self._toast_source)
             self._toast_source = 0
-        self.info_label.set_text(message)
-        self.info_bar.set_message_type(Gtk.MessageType.ERROR if error else Gtk.MessageType.INFO)
+        self.toast_label.set_text(message)
+        context = self.toast_box.get_style_context()
+        context.remove_class("error")
+        context.remove_class("success")
         if error:
+            context.add_class("error")
+            self.toast_icon.set_from_icon_name("dialog-error-symbolic", Gtk.IconSize.BUTTON)
             timeout = max(timeout, 5.0)
-        self.info_revealer.set_no_show_all(False)
-        self.info_revealer.show_all()
-        self.info_revealer.set_reveal_child(True)
+        elif success:
+            context.add_class("success")
+            self.toast_icon.set_from_icon_name("dialog-information-symbolic", Gtk.IconSize.BUTTON)
+        else:
+            self.toast_icon.set_from_icon_name("dialog-information-symbolic", Gtk.IconSize.BUTTON)
+        self.toast_icon.set_pixel_size(16)
+        self.toast_revealer.set_no_show_all(False)
+        self.toast_revealer.show_all()
+        self.toast_revealer.set_reveal_child(True)
         self._toast_source = GLib.timeout_add(int(timeout * 1000), self._hide_toast)
-
-    def _on_info_bar_response(self, _bar: Gtk.InfoBar, _response: int) -> None:
-        self._dismiss_toast()
 
     def _dismiss_toast(self) -> None:
         if self._toast_source:
             GLib.source_remove(self._toast_source)
             self._toast_source = 0
-        self.info_revealer.set_reveal_child(False)
+        self.toast_revealer.set_reveal_child(False)
 
     def _hide_toast(self) -> bool:
         self._toast_source = 0
-        self.info_revealer.set_reveal_child(False)
+        self.toast_revealer.set_reveal_child(False)
         return False
 
     def _on_delete(self, *_args) -> bool:

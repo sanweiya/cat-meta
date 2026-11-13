@@ -187,6 +187,8 @@ class CatMetaApplication(Gtk.Application):
             gtk_settings = Gtk.Settings.get_default()
             if gtk_settings:
                 gtk_settings.connect("notify::gtk-font-name", self._reload_css)
+                gtk_settings.connect("notify::gtk-theme-name", self._reload_css)
+                gtk_settings.connect("notify::gtk-application-prefer-dark-theme", self._reload_css)
         except Exception:
             pass
         for schema in ("org.cinnamon.desktop.interface", "org.gnome.desktop.interface"):
