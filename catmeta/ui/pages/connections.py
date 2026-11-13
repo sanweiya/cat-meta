@@ -11,13 +11,14 @@ from typing import Any
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gdk, Gtk, Pango
+from gi.repository import Gdk, Gtk
 
 from ...async_utils import run_async
 from ...controller import Controller
 from ...util import format_bytes, format_duration
 from ..dialogs import confirm
 from ..widgets.common import BasePage, EmptyState, IconButton, icon, label
+from ..widgets.table import refresh_renderer_fonts, text_renderer
 
 
 class ConnectionsPage(BasePage):
@@ -75,7 +76,7 @@ class ConnectionsPage(BasePage):
         self.tree.set_grid_lines(Gtk.TreeViewGridLines.NONE)
         self.tree.connect("row-activated", self._on_row_activated)
         self.tree.connect("button-press-event", self._on_tree_button)
-        self.tree.get_style_context().add_class("connections-tree")
+        self.tree.get_style_context().add_class("data-list")
         self._build_columns()
         tree_scroll = Gtk.ScrolledWindow()
         tree_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
@@ -99,62 +100,37 @@ class ConnectionsPage(BasePage):
         self._render()
 
     def _build_columns(self) -> None:
-        def add_text(title: str, index: int, expand: bool = False, width: int | None = None, align: float = 0.0, css: str | None = None):
-            renderer = Gtk.CellRendererText()
-            renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
-            renderer.set_property("xalign", align)
-            if css:
-                renderer.set_property("cell-background", None)
-            column = Gtk.TreeViewColumn(title, renderer, text=index)
+        self._renderers: list[Gtk.CellRendererText] = []
+
+        def add(title: str, index: int | None, *, width: int, align: float = 0.0,
+                expand: bool = False, sort: int | None = None):
+            renderer = text_renderer(xalign=align)
+            column = Gtk.TreeViewColumn(title, renderer)
+            if index is not None:
+                column.add_attribute(renderer, "text", index)
             column.set_expand(expand)
             column.set_resizable(True)
-            if width:
-                column.set_min_width(width)
-                column.set_fixed_width(width)
-            column.set_sort_column_id(index)
-            self.tree.append_column(column)
-            return column, renderer
-
-        self.tree.append_column(self._badge_column("主机", 1, expand=True, width=230))
-        self.tree.append_column(self._badge_column("网络", 2, width=88))
-        self.tree.append_column(self._badge_column("规则", 3, width=160))
-        self.tree.append_column(self._badge_column("代理链", 4, expand=True, width=170))
-
-        up_renderer = Gtk.CellRendererText()
-        up_renderer.set_property("xalign", 1.0)
-        up_col = Gtk.TreeViewColumn("上传", up_renderer)
-        up_col.set_cell_data_func(up_renderer, lambda _c, cell, model, it, _d: cell.set_property("text", format_bytes(model.get_value(it, 6))))
-        up_col.set_sort_column_id(6)
-        up_col.set_fixed_width(82)
-        self.tree.append_column(up_col)
-
-        down_renderer = Gtk.CellRendererText()
-        down_renderer.set_property("xalign", 1.0)
-        down_col = Gtk.TreeViewColumn("下载", down_renderer)
-        down_col.set_cell_data_func(down_renderer, lambda _c, cell, model, it, _d: cell.set_property("text", format_bytes(model.get_value(it, 7))))
-        down_col.set_sort_column_id(7)
-        down_col.set_fixed_width(82)
-        self.tree.append_column(down_col)
-
-        time_renderer = Gtk.CellRendererText()
-        time_renderer.set_property("xalign", 1.0)
-        time_col = Gtk.TreeViewColumn("持续", time_renderer)
-        time_col.set_cell_data_func(time_renderer, lambda _c, cell, model, it, _d: cell.set_property("text", format_duration(time.time() - model.get_value(it, 8))))
-        time_col.set_sort_column_id(8)
-        time_col.set_fixed_width(76)
-        self.tree.append_column(time_col)
-
-    def _badge_column(self, title: str, index: int, *, expand: bool = False, width: int | None = None) -> Gtk.TreeViewColumn:
-        renderer = Gtk.CellRendererText()
-        renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
-        column = Gtk.TreeViewColumn(title, renderer, text=index)
-        column.set_expand(expand)
-        column.set_resizable(True)
-        column.set_sort_column_id(index)
-        if width:
             column.set_min_width(width)
             column.set_fixed_width(width)
-        return column
+            column.set_sort_column_id(index if sort is None else sort)
+            self.tree.append_column(column)
+            self._renderers.append(renderer)
+            return column, renderer
+
+        add("主机", 1, expand=True, width=230)
+        add("网络", 2, width=88)
+        add("规则", 3, width=160)
+        add("代理链", 4, expand=True, width=170)
+        up_col, up_renderer = add("上传", None, width=82, align=1.0, sort=6)
+        up_col.set_cell_data_func(up_renderer, lambda _c, cell, model, it, _d: cell.set_property("text", format_bytes(model.get_value(it, 6))))
+        down_col, down_renderer = add("下载", None, width=82, align=1.0, sort=7)
+        down_col.set_cell_data_func(down_renderer, lambda _c, cell, model, it, _d: cell.set_property("text", format_bytes(model.get_value(it, 7))))
+        time_col, time_renderer = add("持续", None, width=76, align=1.0, sort=8)
+        time_col.set_cell_data_func(time_renderer, lambda _c, cell, model, it, _d: cell.set_property("text", format_duration(time.time() - model.get_value(it, 8))))
+
+    def refresh_fonts(self) -> None:
+        refresh_renderer_fonts(getattr(self, "_renderers", []))
+        self.tree.queue_resize()
 
     # ---------------- 数据 ----------------
     def _extract(self, data: dict[str, Any]) -> list[dict[str, Any]]:

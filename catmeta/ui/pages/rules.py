@@ -9,12 +9,13 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-from gi.repository import Gdk, Gtk, Pango
+from gi.repository import Gdk, Gtk
 
 from ...async_utils import run_async
 from ...controller import Controller
 from ...profiles import ProfileError
 from ..widgets.common import BasePage, EmptyState, IconButton, label
+from ..widgets.table import refresh_renderer_fonts, text_renderer
 
 RULE_TYPES = {
     "Domain": "DOMAIN",
@@ -80,6 +81,7 @@ class RulesPage(BasePage):
         self.filter = self.store.filter_new()
         self.filter.set_visible_func(self._visible)
         self.tree = Gtk.TreeView(model=self.filter)
+        self.tree.get_style_context().add_class("data-list")
         self.tree.set_enable_search(False)
         self.tree.set_show_expanders(False)
         self.tree.set_grid_lines(Gtk.TreeViewGridLines.NONE)
@@ -103,39 +105,31 @@ class RulesPage(BasePage):
         self._render()
 
     def _build_columns(self) -> None:
-        num = Gtk.CellRendererText()
-        num.set_property("xalign", 1.0)
-        num_col = Gtk.TreeViewColumn("#", num, text=0)
-        num_col.set_fixed_width(48)
-        num_col.set_sort_column_id(0)
-        self.tree.append_column(num_col)
+        self._renderers: list[Gtk.CellRendererText] = []
 
-        type_col = Gtk.TreeViewColumn("类型", Gtk.CellRendererText(), text=1)
-        type_col.set_fixed_width(180)
-        type_col.set_resizable(True)
-        type_col.set_sort_column_id(1)
-        self.tree.append_column(type_col)
+        def add(title: str, index: int, *, width: int, align: float = 0.0,
+                expand: bool = False, resizable: bool = True) -> None:
+            renderer = text_renderer(xalign=align)
+            column = Gtk.TreeViewColumn(title, renderer, text=index)
+            column.set_expand(expand)
+            if expand:
+                column.set_min_width(width)
+            else:
+                column.set_fixed_width(width)
+            column.set_resizable(resizable)
+            column.set_sort_column_id(index)
+            self.tree.append_column(column)
+            self._renderers.append(renderer)
 
-        payload_col = Gtk.TreeViewColumn("匹配内容", Gtk.CellRendererText(), text=2)
-        payload_col.set_expand(True)
-        payload_col.set_min_width(260)
-        payload_col.set_resizable(True)
-        payload_col.set_sort_column_id(2)
-        self.tree.append_column(payload_col)
+        add("#", 0, width=48, align=1.0, resizable=False)
+        add("类型", 1, width=180)
+        add("匹配内容", 2, width=260, expand=True)
+        add("策略", 3, width=160)
+        add("条目", 4, width=68)
 
-        proxy_col = Gtk.TreeViewColumn("策略", Gtk.CellRendererText(), text=3)
-        proxy_col.set_fixed_width(160)
-        proxy_col.set_resizable(True)
-        proxy_col.set_sort_column_id(3)
-        self.tree.append_column(proxy_col)
-
-        size_col = Gtk.TreeViewColumn("条目", Gtk.CellRendererText(), text=4)
-        size_col.set_fixed_width(68)
-        size_col.set_sort_column_id(4)
-        self.tree.append_column(size_col)
-        for column in self.tree.get_columns():
-            for renderer in column.get_cells():
-                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+    def refresh_fonts(self) -> None:
+        refresh_renderer_fonts(getattr(self, "_renderers", []))
+        self.tree.queue_resize()
 
     # ---------------- 数据 ----------------
     def on_show(self) -> None:

@@ -512,11 +512,6 @@ treeview {
 treeview.view {
   border-left-color: transparent;
   border-top-color: transparent;
-  padding: 3px;
-}
-
-/* 节点表使用更小的行内边距，配合较小的操作按钮获得紧凑行高。 */
-treeview.node-list.view {
   padding: 1px 3px;
 }
 
@@ -533,14 +528,10 @@ treeview header button {
   border-bottom: 1px solid @borders;
   border-radius: 0;
   box-shadow: none;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   color: alpha(@theme_fg_color, 0.6);
   padding: 5px 8px;
-}
-
-treeview.node-list header button {
-  font-size: 11px;
 }
 
 treeview header button:last-child {

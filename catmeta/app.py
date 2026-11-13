@@ -205,9 +205,10 @@ class CatMetaApplication(Gtk.Application):
         try:
             self._css_provider.load_from_data(_scaled_css())
             if self.window:
-                proxies = self.window.pages.get("proxies")
-                if proxies is not None and hasattr(proxies, "refresh_fonts"):
-                    proxies.refresh_fonts()
+                for page in self.window.pages.values():
+                    refresh = getattr(page, "refresh_fonts", None)
+                    if callable(refresh):
+                        refresh()
         except Exception as exc:
             log.error("重新加载样式失败：%s", exc)
 
