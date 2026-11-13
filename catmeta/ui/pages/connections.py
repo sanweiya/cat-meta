@@ -208,8 +208,11 @@ class ConnectionsPage(BasePage):
         selected = self._selected_id()
         self.filter.refilter()
         self.store.clear()
+        columns = list(range(9))
         for row in self._rows:
-            self.store.append(
+            self.store.insert_with_valuesv(
+                -1,
+                columns,
                 [
                     row["id"],
                     row["host"],
@@ -220,7 +223,7 @@ class ConnectionsPage(BasePage):
                     row["up"],
                     row["down"],
                     row["start"],
-                ]
+                ],
             )
         self.filter.refilter()
         if selected:

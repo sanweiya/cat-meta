@@ -28,6 +28,8 @@ class LogsPage(BasePage):
         self.toast = toast
         self._paused = False
         self._line_count = 0
+        # 最后一条已处理的日志，用于切回页面时只追加之后的新条目。
+        self._last: dict[str, Any] | None = None
         self._scroll_source = 0
         self._search_source = 0
         self._level = "all"
@@ -116,17 +118,18 @@ class LogsPage(BasePage):
 
     # ---------------- 事件 ----------------
     def on_log(self, entry: dict[str, Any]) -> None:
-        # 不在日志页时只保留 Controller 中的环形缓冲，切回页面时重建，
+        # 不在日志页时只保留 Controller 中的环形缓冲，切回页面时补齐，
         # 避免后台高频日志持续触发 TextBuffer 布局和滚动。
         if self._paused or not self.get_mapped():
             return
+        self._last = entry
         if not self._match(entry):
             return
         self._append(entry)
 
     def on_show(self) -> None:
         super().on_show()
-        self._rebuild()
+        self._sync()
         self._scroll_to_end()
 
     def _on_cleared(self) -> None:
@@ -167,10 +170,31 @@ class LogsPage(BasePage):
         if scroll and (was_bottom or self._is_bottom()):
             self._scroll_to_end()
 
+    def _sync(self) -> None:
+        """把缓冲区补齐到 Controller 的日志缓冲；能增量就只追加新条目。"""
+        logs = list(self.controller.logs)
+        start = None
+        if self._last is not None:
+            for index in range(len(logs) - 1, -1, -1):
+                if logs[index] is self._last:
+                    start = index + 1
+                    break
+        if start is None:
+            self._rebuild()
+            return
+        for entry in logs[start:]:
+            if self._match(entry):
+                self._append(entry, scroll=False)
+        if logs:
+            self._last = logs[-1]
+        self._update_count()
+        self._update_placeholder()
+
     def _rebuild(self) -> None:
         self.buffer.set_text("")
         self._line_count = 0
         logs = list(self.controller.logs)
+        self._last = logs[-1] if logs else None
         for entry in logs:
             if self._match(entry):
                 self._append(entry, scroll=False)
@@ -202,7 +226,8 @@ class LogsPage(BasePage):
     def _do_scroll(self) -> bool:
         self._scroll_source = 0
         adj = self.scroller.get_vadjustment()
-        adj.set_value(max(0, adj.get_upper() - adj.get_page_size()))
+        if adj is not None:
+            adj.set_value(max(0, adj.get_upper() - adj.get_page_size()))
         return False
 
     # ---------------- 操作 ----------------

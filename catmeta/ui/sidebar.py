@@ -35,6 +35,8 @@ class Sidebar(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.controller = controller
         self.on_navigate = on_navigate
+        # 代码选中行时不要再触发一次导航，否则 on_show() 会跑两遍。
+        self._syncing = False
         self.get_style_context().add_class("sidebar")
         self.set_size_request(200, -1)
 
@@ -101,6 +103,8 @@ class Sidebar(Gtk.Box):
         self.update_state(controller.state)
 
     def _on_row_selected(self, _listbox: Gtk.ListBox, row: Gtk.ListBoxRow | None) -> None:
+        if self._syncing:
+            return
         if row is not None:
             page_id = getattr(row, "page_id", None)
             if page_id:
@@ -109,7 +113,11 @@ class Sidebar(Gtk.Box):
     def select(self, page_id: str) -> None:
         row = self.rows.get(page_id)
         if row is not None and self.listbox.get_selected_row() is not row:
-            self.listbox.select_row(row)
+            self._syncing = True
+            try:
+                self.listbox.select_row(row)
+            finally:
+                self._syncing = False
 
     def update_state(self, state: str) -> None:
         labels = {

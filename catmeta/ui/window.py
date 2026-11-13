@@ -53,6 +53,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self._traffic_source = 0
         self._geometry_source = 0
         self._geometry_ready = False
+        self._show_source = 0
+        self._current_page = ""
 
         self.set_icon_name("cat-meta")
         # window_width/height 保存的是外框尺寸；get_size()/set_default_size()
@@ -268,15 +270,31 @@ class MainWindow(Gtk.ApplicationWindow):
     def navigate(self, page_id: str, save: bool = True) -> None:
         if page_id not in self.pages:
             return
+        self._current_page = page_id
         self.stack.set_visible_child_name(page_id)
         self.sidebar.select(page_id)
-        page = self.pages[page_id]
-        if hasattr(page, "on_show"):
-            page.on_show()
         self._update_header_meta(page_id)
         if save:
             self.controller.settings.set("last_page", page_id)
-        GLib.idle_add(self._clear_focus)
+        # 页面数据在首帧绘制之后再加载：GTK 要等当前回调返回才会重绘，
+        # 把 on_show() 里的解析/建模工作留在同步路径上会直接拖慢切页。
+        self._schedule_page_show(page_id)
+
+    def _schedule_page_show(self, page_id: str) -> None:
+        if self._show_source:
+            GLib.source_remove(self._show_source)
+        self._show_source = GLib.idle_add(self._run_page_show, page_id)
+
+    def _run_page_show(self, page_id: str) -> bool:
+        self._show_source = 0
+        if page_id != getattr(self, "_current_page", ""):
+            return False
+        page = self.pages.get(page_id)
+        if page is not None and hasattr(page, "on_show"):
+            page.on_show()
+        self._update_header_meta(page_id)
+        self._clear_focus()
+        return False
 
     def _update_header_meta(self, page_id: str) -> None:
         page = self.pages.get(page_id)

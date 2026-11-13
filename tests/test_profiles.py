@@ -48,6 +48,18 @@ class ProfileTests(unittest.TestCase):
             item.stop()
         self.tmp.cleanup()
 
+    def test_parsed_data_is_cached_and_invalidated(self):
+        profile = self.store.add_manual("缓存", SIMPLE)
+        self.store.set_current(profile.id)
+        first = self.store.data()
+        # 命中缓存时直接返回同一个对象，避免重复解析整份 YAML。
+        self.assertIs(first, self.store.data())
+        self.assertEqual(self.store.stats()["rules"], 1)
+        updated = SIMPLE.replace("- MATCH,选择", "- MATCH,选择\n  - DOMAIN,example.com,DIRECT")
+        self.store.save_content(profile.id, updated)
+        self.assertEqual(len(self.store.data()["rules"]), 2)
+        self.assertEqual(self.store.stats()["rules"], 2)
+
     def test_sample_installed(self):
         self.assertEqual(len(self.store.all()), 1)
         self.assertIsNotNone(self.store.current())

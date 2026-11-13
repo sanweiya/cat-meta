@@ -287,9 +287,10 @@ class SettingsPage(BasePage):
         self._refresh_core_info()
         self._set_dirty(False)
 
-    def _refresh_core_info(self) -> None:
+    def _refresh_core_info(self, force: bool = False) -> None:
         core = self.controller.core
-        version = core.version(refresh=True)
+        # 读取版本要启动一次 `mihomo -v` 子进程：只有内核文件变化时才强制刷新。
+        version = core.version(refresh=force)
         binary = core.binary
         self.core_version_label.set_text(f"mihomo {version}" if version else "未安装")
         if binary:
@@ -448,7 +449,7 @@ class SettingsPage(BasePage):
         self.download_progress.set_visible(False)
         self.download_progress_text.set_visible(False)
         self._pending_core_path = str(path)
-        self._refresh_core_info()
+        self._refresh_core_info(force=True)
         self.toast("mihomo 内核已安装，重启内核后生效", success=True, timeout=6)
         if self.controller.running:
             self._mark_dirty()

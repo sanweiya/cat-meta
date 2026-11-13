@@ -177,6 +177,9 @@ class ProfileStore:
         self._lock = threading.RLock()
         self._profiles: list[Profile] = []
         self._current: str = ""
+        # 解析结果按 (路径, mtime, 大小) 缓存：一份上万条规则的订阅
+        # 解析一次约 0.4 s，切换页面时不应该重复付这个成本。
+        self._data_cache: dict[str, tuple[tuple[int, int], dict[str, Any]]] = {}
         existed = self.path.exists()
         self.load()
         if not self._profiles and not existed:
@@ -425,7 +428,29 @@ class ProfileStore:
             raise ProfileError(f"无法读取配置：{exc}") from exc
 
     def data(self, profile_id: str | None = None) -> dict[str, Any]:
-        return validate_config_text(self.content(profile_id))
+        profile = self.get(profile_id) if profile_id else self.current()
+        if not profile:
+            raise ProfileError("尚未选择配置")
+        try:
+            stat = profile.path.stat()
+            signature = (stat.st_mtime_ns, stat.st_size)
+        except OSError as exc:
+            raise ProfileError(f"无法读取配置：{exc}") from exc
+        key = str(profile.path)
+        with self._lock:
+            cached = self._data_cache.get(key)
+            if cached is not None and cached[0] == signature:
+                return cached[1]
+        try:
+            text = profile.path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ProfileError(f"无法读取配置：{exc}") from exc
+        data = validate_config_text(text)
+        with self._lock:
+            if len(self._data_cache) > 8:
+                self._data_cache.clear()
+            self._data_cache[key] = (signature, data)
+        return data
 
     def stats(self, profile_id: str | None = None) -> dict[str, int]:
         try:
