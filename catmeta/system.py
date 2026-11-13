@@ -177,6 +177,43 @@ def open_folder(path: Path) -> bool:
     return open_uri(Path(path).as_uri())
 
 
+def default_text_editor():
+    """返回系统默认文本编辑器，跳过 Cat Meta 自身注册的 YAML 处理器。"""
+    import gi
+
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio
+
+    for mime in ("text/plain", "text/x-yaml", "application/x-yaml", "application/yaml"):
+        try:
+            app = Gio.AppInfo.get_default_for_type(mime, False)
+        except Exception:
+            continue
+        if app is None:
+            continue
+        app_id = (app.get_id() or "").lower()
+        if app_id == "cat-meta.desktop" or "cat-meta" in app_id:
+            continue
+        try:
+            if app.supports_uris():
+                return app
+        except Exception:
+            continue
+    return None
+
+
+def open_in_text_editor(path: Path) -> bool:
+    """用系统默认编辑器打开文件；没有可用编辑器时返回 False。"""
+    app = default_text_editor()
+    if app is None:
+        return False
+    try:
+        return bool(app.launch_uris([Path(path).resolve().as_uri()], None))
+    except Exception:
+        log.exception("打开系统编辑器失败")
+        return False
+
+
 def notify(title: str, body: str = "", icon: str = "cat-meta") -> None:
     try:
         import gi

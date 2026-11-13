@@ -22,6 +22,7 @@ from ..widgets.common import (
     SettingRow,
     SettingsGroup,
     BasePage,
+    block_scroll,
     icon,
     label,
 )
@@ -86,6 +87,8 @@ class SettingsPage(BasePage):
         spin.set_value(int(value))
         spin.set_numeric(True)
         spin.set_width_chars(6)
+        # 不允许滚轮改数值，避免滚动设置页时误触端口。
+        block_scroll(spin)
         spin.connect("value-changed", lambda _s: self._mark_dirty())
         return spin
 
@@ -102,6 +105,7 @@ class SettingsPage(BasePage):
         for key, text in options:
             combo.append(key, text)
         combo.set_active_id(active)
+        block_scroll(combo)
         combo.connect("changed", lambda _c: self._mark_dirty())
         return combo
 
@@ -205,6 +209,7 @@ class SettingsPage(BasePage):
 
     def _build_profiles(self) -> None:
         self.auto_update_switch = self._switch(True)
+        self.builtin_editor_switch = self._switch(True)
         self.interval_combo = self._combo(
             [("6", "每 6 小时"), ("12", "每 12 小时"), ("24", "每 24 小时"), ("72", "每 3 天")],
             "24",
@@ -219,6 +224,7 @@ class SettingsPage(BasePage):
             SettingRow("自动更新订阅", "在后台定期更新所有启用的远程订阅", self.auto_update_switch),
             SettingRow("更新间隔", "仅在自动更新开启时生效", self.interval_combo),
             SettingRow("检查订阅更新", "立即检查并下载已到期的订阅", check_button),
+            SettingRow("使用内置文本编辑器", "关闭后调用系统默认编辑器", self.builtin_editor_switch),
             SettingRow("数据目录", "配置、运行时文件与内核都保存在此目录", data_control),
         ]
         self.body.pack_start(SettingsGroup("订阅", rows), False, False, 0)
@@ -273,6 +279,7 @@ class SettingsPage(BasePage):
             self.log_level_combo.set_active_id(str(values.get("log_level") or "info"))
             self.test_url_entry.set_text(str(values.get("test_url") or ""))
             self.auto_update_switch.set_active(bool(values.get("auto_update_profiles")))
+            self.builtin_editor_switch.set_active(bool(values.get("use_builtin_editor", True)))
             self.interval_combo.set_active_id(str(int(values.get("update_interval_hours") or 24)))
             self._pending_core_path = str(values.get("core_path") or "")
         finally:
@@ -368,6 +375,7 @@ class SettingsPage(BasePage):
             "log_level": self.log_level_combo.get_active_id() or "info",
             "test_url": self.test_url_entry.get_text().strip(),
             "auto_update_profiles": self.auto_update_switch.get_active(),
+            "use_builtin_editor": self.builtin_editor_switch.get_active(),
             "update_interval_hours": int(self.interval_combo.get_active_id() or "24"),
             "core_path": self._pending_core_path,
         }

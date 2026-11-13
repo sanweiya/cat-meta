@@ -14,7 +14,7 @@ from gi.repository import GLib, Gtk, Pango
 from ...controller import Controller
 from ...util import safe_filename
 from ..fonts import monospace_font
-from ..widgets.common import BasePage, IconButton, label
+from ..widgets.common import BasePage, IconButton, block_scroll, label
 
 
 LEVEL_ORDER = {"debug": 0, "info": 1, "warning": 2, "warn": 2, "error": 3}
@@ -33,6 +33,7 @@ class LogsPage(BasePage):
         self._level = "all"
 
         self.level_combo = Gtk.ComboBoxText()
+        block_scroll(self.level_combo)
         for level, text in (("all", "全部级别"), ("debug", "调试"), ("info", "信息"), ("warning", "警告"), ("error", "错误")):
             self.level_combo.append(level, text)
         self.level_combo.set_active_id("all")

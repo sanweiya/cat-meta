@@ -20,7 +20,7 @@ from ...async_utils import run_async
 from ...controller import Controller
 from ...util import latency_text
 from ..fonts import monospace_font
-from ..widgets.common import BasePage, EmptyState, IconButton, label
+from ..widgets.common import BasePage, EmptyState, IconButton, block_scroll, label
 from ..widgets.table import BaselineCellRendererText, refresh_renderer_fonts
 
 
@@ -228,6 +228,7 @@ class ProxiesPage(BasePage):
         self.action_renderer: ActionCellRenderer | None = None
 
         self.group_combo = Gtk.ComboBoxText()
+        block_scroll(self.group_combo)
         self.group_combo.set_size_request(150, -1)
         self.group_combo.set_tooltip_text("选择代理分组")
         self.group_combo.connect("changed", self._on_group_changed)

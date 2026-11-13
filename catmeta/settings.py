@@ -47,6 +47,7 @@ def _defaults() -> dict[str, Any]:
         "proxy_columns": ["name", "type", "delay", "status", "actions"],
         # 订阅
         "auto_update_profiles": True,
+        "use_builtin_editor": True,
         "update_interval_hours": 24,
         "last_profile_update_check": 0,
         # 系统代理

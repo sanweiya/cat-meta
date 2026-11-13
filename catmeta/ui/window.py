@@ -22,7 +22,7 @@ from .pages.proxies import ProxiesPage
 from .pages.rules import RulesPage
 from .pages.settings import SettingsPage
 from .sidebar import Sidebar
-from .widgets.common import icon, label
+from .widgets.common import block_scroll, icon, label
 
 MIN_WINDOW_WIDTH = 810
 MIN_WINDOW_HEIGHT = 580
@@ -150,6 +150,7 @@ class MainWindow(Gtk.ApplicationWindow):
         menu.append("退出", "app.quit")
         menu_button.set_popover(Gtk.Popover.new_from_model(menu_button, menu))
         self.header_mode = Gtk.ComboBoxText()
+        block_scroll(self.header_mode)
         self.header_mode.set_tooltip_text("代理模式")
         self.header_mode.set_size_request(104, -1)
         for mode in ("rule", "global", "direct"):

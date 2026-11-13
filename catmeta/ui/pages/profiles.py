@@ -11,11 +11,13 @@ import cairo
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gdk, Gtk
+gi.require_version("Gio", "2.0")
+from gi.repository import Gdk, Gio, GLib, Gtk
 
 from ...async_utils import run_async
 from ...controller import Controller
-from ...profiles import Profile
+from ...profiles import Profile, ProfileError, validate_config_text
+from ...system import open_in_text_editor
 from ...util import format_bytes, format_timestamp, safe_filename, time_ago
 from ..dialogs import ProfileEditDialog, ProfileImportDialog, TextInputDialog, confirm
 from ..widgets.common import (
@@ -35,6 +37,7 @@ class ProfilesPage(BasePage):
         self.controller = controller
         self.toast = toast
         self._open_popover = None
+        self._external_edits: dict[str, dict] = {}
 
         refresh = IconButton("view-refresh-symbolic", "刷新配置列表", self.refresh)
         self.header.actions.pack_start(refresh, False, False, 0)
@@ -211,7 +214,7 @@ class ProfilesPage(BasePage):
             box.pack_start(item, False, False, 0)
 
         add_item("编辑 YAML", "text-editor-symbolic", lambda: self._edit(profile))
-        add_item("重命名", "edit-rename-symbolic", lambda: self._rename(profile))
+        add_item("重命名", "document-edit-symbolic", lambda: self._rename(profile))
         if profile.kind == "remote":
             add_item("立即更新", "view-refresh-symbolic", lambda: self._update(profile))
             add_item("复制订阅链接", "edit-copy-symbolic", lambda: self._copy(profile.url))
@@ -279,8 +282,132 @@ class ProfilesPage(BasePage):
         except Exception as exc:
             self.toast(str(exc), error=True)
             return
+        if bool(self.controller.settings.use_builtin_editor):
+            self._open_builtin_editor(profile, content)
+            return
+        if self._open_in_system_editor(profile, content):
+            return
+        self.toast("系统编辑器不可用，已打开内置编辑器", timeout=5)
+        self._open_builtin_editor(profile, content)
+
+    def _open_builtin_editor(self, profile: Profile, content: str) -> None:
         dialog = ProfileEditDialog(self.get_toplevel(), profile, content, lambda text: self._save_edit(profile, text))
         dialog.show_all()
+
+    def _open_in_system_editor(self, profile: Profile, content: str) -> bool:
+        try:
+            stat = profile.path.stat()
+        except OSError:
+            return False
+        if not open_in_text_editor(profile.path):
+            return False
+        watched = self._start_external_watch(profile, content, stat.st_mtime_ns, stat.st_size)
+        if watched:
+            self.toast("已用系统编辑器打开，保存后自动校验并重载", timeout=6)
+        else:
+            self.toast("已用系统编辑器打开，但无法监听保存，请编辑后重新启用配置", error=True, timeout=8)
+        return True
+
+    # ---------------- 外部编辑器监听 ----------------
+    def _start_external_watch(self, profile: Profile, content: str, mtime: int, size: int) -> bool:
+        self._stop_external_watch(profile.id)
+        path = profile.path
+        try:
+            monitor = Gio.File.new_for_path(str(path.parent)).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, None)
+        except Exception:
+            monitor = None
+        if monitor is None:
+            return False
+        state = {
+            "profile": profile,
+            "filename": path.name,
+            "initial": content,
+            "mtime": mtime,
+            "size": size,
+            "bad": None,
+            "monitor": monitor,
+            "debounce": 0,
+            "timeout": 0,
+        }
+        self._external_edits[profile.id] = state
+        monitor.connect("changed", self._on_external_file_changed, profile.id)
+        state["timeout"] = GLib.timeout_add_seconds(15 * 60, self._on_external_timeout, profile.id)
+        return True
+
+    def _stop_external_watch(self, profile_id: str) -> None:
+        state = self._external_edits.pop(profile_id, None)
+        if not state:
+            return
+        monitor = state.get("monitor")
+        if monitor is not None:
+            try:
+                monitor.cancel()
+            except Exception:
+                pass
+        for key in ("timeout", "debounce"):
+            source = state.get(key)
+            if source:
+                GLib.source_remove(source)
+
+    def _on_external_timeout(self, profile_id: str) -> bool:
+        state = self._external_edits.get(profile_id)
+        if state is not None:
+            state["timeout"] = 0
+            self._stop_external_watch(profile_id)
+        return False
+
+    def _on_external_file_changed(self, _monitor, file, _other, _event, profile_id: str) -> None:
+        state = self._external_edits.get(profile_id)
+        if state is None:
+            return
+        try:
+            names = {file.get_basename()} if file is not None else set()
+            if _other is not None:
+                names.add(_other.get_basename())
+        except Exception:
+            return
+        if state["filename"] not in names:
+            return
+        if state["debounce"]:
+            GLib.source_remove(state["debounce"])
+        state["debounce"] = GLib.timeout_add(250, self._check_external_edit, profile_id)
+
+    def _check_external_edit(self, profile_id: str) -> bool:
+        state = self._external_edits.get(profile_id)
+        if state is None:
+            return False
+        state["debounce"] = 0
+        path = state["profile"].path
+        try:
+            stat = path.stat()
+        except OSError:
+            return False
+        current = (stat.st_mtime_ns, stat.st_size)
+        if current == (state["mtime"], state["size"]):
+            return False
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return False
+        if text == state["initial"]:
+            state["mtime"], state["size"] = current
+            return False
+        try:
+            validate_config_text(text)
+        except ProfileError as exc:
+            state["mtime"], state["size"] = current
+            if state["bad"] != text:
+                state["bad"] = text
+                self.toast(f"配置有误，未重载：{exc}", error=True, timeout=8)
+            return False
+        self._stop_external_watch(profile_id)
+        run_async(
+            lambda: self.controller.save_profile_content(profile_id, text),
+            on_success=lambda _r: self.toast("配置已保存并重新加载", success=True),
+            on_error=lambda exc: self.toast(str(exc), error=True, timeout=8),
+            name="save-profile",
+        )
+        return False
 
     def _save_edit(self, profile: Profile, text: str) -> None:
         def action() -> None:

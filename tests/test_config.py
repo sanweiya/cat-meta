@@ -64,6 +64,12 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(int(loaded.mixed_port), 7999)
         self.assertTrue(loaded.api_secret)
 
+    def test_builtin_editor_defaults_on(self):
+        self.assertTrue(self.settings.use_builtin_editor)
+        self.settings.set("use_builtin_editor", False)
+        loaded = Settings(Path(self.tmp.name) / "settings.json")
+        self.assertFalse(loaded.use_builtin_editor)
+
     def test_recognizes_own_core_process(self):
         config = str(self.core.runtime_config)
         self.assertTrue(self.core._looks_like_core(["mihomo", "-d", str(APP_DATA), "-f", config]))

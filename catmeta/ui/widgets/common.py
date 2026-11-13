@@ -59,6 +59,30 @@ def label(
     return widget
 
 
+def block_scroll(widget: Gtk.Widget) -> None:
+    """阻止滚轮改数值，并把滚动交给外层滚动容器。"""
+    def on_scroll(child: Gtk.Widget, event: Gdk.EventScroll) -> bool:
+        parent = child.get_parent()
+        while parent is not None and not isinstance(parent, Gtk.ScrolledWindow):
+            parent = parent.get_parent()
+        if parent is not None:
+            adjustment = parent.get_vadjustment()
+            if adjustment is not None:
+                delta = 0.0
+                if event.direction == Gdk.ScrollDirection.SMOOTH:
+                    ok, _dx, dy = event.get_scroll_deltas()
+                    if ok:
+                        delta = dy * 50
+                elif event.direction in (Gdk.ScrollDirection.UP, Gdk.ScrollDirection.DOWN):
+                    step = adjustment.get_step_increment() or 40
+                    delta = -step if event.direction == Gdk.ScrollDirection.UP else step
+                if delta:
+                    adjustment.set_value(adjustment.get_value() + delta)
+        return True
+
+    widget.connect("scroll-event", on_scroll)
+
+
 def set_hand_cursor(widget: Gtk.Widget) -> None:
     try:
         window = widget.get_window()

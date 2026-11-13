@@ -13,6 +13,7 @@ from gi.repository import Gtk, Pango
 
 from ..async_utils import run_async
 from ..profiles import SAMPLE_PROFILE, Profile, ProfileError, validate_config_text
+from .fonts import monospace_font
 from .widgets.common import icon, label
 
 
@@ -158,8 +159,8 @@ class ProfileImportDialog(Gtk.Dialog):
         scroller.set_vexpand(True)
         scroller.set_min_content_height(250)
         self.manual_view = Gtk.TextView()
-        self.manual_view.get_style_context().add_class("mono")
         self.manual_view.set_monospace(True)
+        self.manual_view.override_font(monospace_font())
         self.manual_view.set_wrap_mode(Gtk.WrapMode.NONE)
         self.manual_view.get_buffer().set_text(SAMPLE_PROFILE)
         scroller.add(self.manual_view)
@@ -275,8 +276,8 @@ class ProfileEditDialog(Gtk.Dialog):
         scroller.set_vexpand(True)
         self.view = Gtk.TextView()
         self.view.set_monospace(True)
+        self.view.override_font(monospace_font())
         self.view.set_wrap_mode(Gtk.WrapMode.NONE)
-        self.view.get_style_context().add_class("mono")
         self.view.get_buffer().set_text(content)
         scroller.add(self.view)
         content_area.pack_start(scroller, True, True, 0)
