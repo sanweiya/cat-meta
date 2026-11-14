@@ -14,6 +14,7 @@ from gi.repository import GLib, Gtk
 from ... import VERSION
 from ... import polkit
 from ...async_utils import run_async
+from ..dialogs import confirm
 from ...controller import Controller
 from ...geodata import download_geodata, local_proxy_ports, status as geodata_status
 from ...paths import APP_CONFIG, APP_DATA, APP_LOG, CORE_LOG, LOGS_DIR
