@@ -21,6 +21,17 @@ class PolkitRuleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "49-cat-meta-tun.rules"
             with mock.patch.object(polkit, "RULE_PATH", path):
-                self.assertFalse(polkit.rule_installed())
+                with mock.patch.object(polkit, "_authorized", return_value=False):
+                    self.assertFalse(polkit.rule_installed())
                 path.write_text(polkit.rule_text("cx"), encoding="utf-8")
                 self.assertTrue(polkit.rule_installed())
+
+    def test_rule_installed_falls_back_to_pkcheck(self):
+        # Fedora 的 /etc/polkit-1/rules.d 是 0700 root，读不到文件时要问 polkit。
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "missing.rules"
+            with mock.patch.object(polkit, "RULE_PATH", missing):
+                with mock.patch.object(polkit, "_authorized", return_value=True):
+                    self.assertTrue(polkit.rule_installed())
+                with mock.patch.object(polkit, "_authorized", return_value=False):
+                    self.assertFalse(polkit.rule_installed())

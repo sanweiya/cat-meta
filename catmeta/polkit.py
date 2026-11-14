@@ -40,11 +40,32 @@ polkit.addRule(function(action, subject) {{
 """
 
 
-def rule_installed() -> bool:
+def _authorized(action: str) -> bool | None:
+    """用 pkcheck 询问 polkit 当前进程是否会拿到授权（不会弹窗）。"""
+    pkcheck = shutil.which("pkcheck")
+    if not pkcheck:
+        return None
     try:
-        return MARKER in RULE_PATH.read_text(encoding="utf-8")
+        result = subprocess.run(
+            [pkcheck, "--action-id", action, "--process", str(os.getpid())],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return result.returncode == 0
+
+
+def rule_installed() -> bool:
+    # Fedora 把 /etc/polkit-1/rules.d 设为 0700 root，普通用户读不到文件，
+    # 只能直接问 polkit：拿得到授权说明规则（或等价策略）已经生效。
+    try:
+        if MARKER in RULE_PATH.read_text(encoding="utf-8"):
+            return True
     except OSError:
-        return False
+        pass
+    return _authorized(ACTIONS[2]) is True
 
 
 def install_rule() -> tuple[bool, str]:
@@ -74,7 +95,7 @@ def install_rule() -> tuple[bool, str]:
         detail = (result.stderr or result.stdout or "已取消或授权失败").strip()
         return False, detail
     if not rule_installed():
-        return False, "规则已写入但未生效，请检查 polkit 服务"
+        return False, "规则已写入但未生效，请确认 polkit 服务正在运行"
     return True, "已启用 TUN 免密授权"
 
 
