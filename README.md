@@ -46,8 +46,10 @@
 
 - 主要目标：Linux Mint 21+ / LMDE，Cinnamon 桌面；MATE / GNOME 亦可
 - 其他桌面：XFCE、LXQt 等可以运行，但有两处限制——
-  - 系统代理开关依赖 `org.gnome.system.proxy` 的 GSettings 键，XFCE/LXQt 不读取，
-    界面会把它显示为不可用，请改用 TUN 模式；
+  - 系统代理：GNOME 系桌面写 `org.gnome.system.proxy`，立即生效；XFCE/LXQt 等没有
+    统一的桌面代理设置，改为写入 `~/.config/environment.d/90-cat-meta-proxy.conf`
+    的 `http_proxy` / `https_proxy` 等变量，重新登录后对所有应用生效（需要立即全局
+    生效时用 TUN 模式）；
   - 托盘图标需要面板提供宿主：XFCE 需启用“通知区域”插件，LXQt 走 StatusNotifier。
     没有宿主时会自动禁用托盘，避免窗口最小化后找不到。
 - Python 3.10+

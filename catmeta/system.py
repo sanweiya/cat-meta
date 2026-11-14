@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-from .paths import APP_DATA, AUTOSTART_FILE, PROJECT_ROOT, SYSTEM_PROXY_BACKUP
+from .paths import APP_DATA, AUTOSTART_FILE, CONFIG_HOME, PROJECT_ROOT, SYSTEM_PROXY_BACKUP
 
 log = logging.getLogger("catmeta.system")
 
@@ -42,18 +42,59 @@ def parse_gvariant_string(value: str) -> str:
     return value
 
 
-class SystemProxy:
-    """使用 GSettings 控制系统代理；这是 Cinnamon / GNOME / MATE 的原生方式。"""
+ENV_PROXY_FILE = CONFIG_HOME / "environment.d" / "90-cat-meta-proxy.conf"
 
-    # 只有这些桌面会真正读取 org.gnome.system.proxy；XFCE、LXQt、KDE 等
-    # 桌面即使装了 schema 也不会生效，必须按不可用处理，避免“显示成功但无效”。
+
+def _env_proxy_values(port: int) -> dict[str, str]:
+    url = f"http://127.0.0.1:{port}"
+    values = {
+        "http_proxy": url,
+        "https_proxy": url,
+        "all_proxy": f"socks5://127.0.0.1:{port}",
+        "no_proxy": "localhost,127.0.0.1,::1",
+    }
+    values.update({key.upper(): value for key, value in list(values.items())})
+    return values
+
+
+def _publish_session_env(values: dict[str, str], *, unset: bool = False) -> None:
+    """把变量推给 D-Bus 激活环境与 systemd 用户环境（新启动的进程可见）。"""
+    pairs = [f"{key}={value}" for key, value in values.items()]
+    commands = [["dbus-update-activation-environment", *pairs]]
+    if unset:
+        commands.append(["systemctl", "--user", "unset-environment", *values])
+    else:
+        commands.append(["systemctl", "--user", "set-environment", *pairs])
+    for command in commands:
+        try:
+            subprocess.run(command, capture_output=True, timeout=5)
+        except (OSError, subprocess.SubprocessError):
+            log.debug("更新会话环境失败：%s", command[0], exc_info=True)
+
+
+class SystemProxy:
+    """系统代理开关。
+
+    - GNOME 系桌面（Cinnamon / MATE / GNOME…）写 ``org.gnome.system.proxy``，立即生效；
+    - 其他桌面（XFCE / LXQt / KDE…）没有统一的桌面代理设置，改为写入会话环境变量
+      ``http_proxy`` / ``https_proxy`` 等，新启动的应用生效。
+    """
+
     GNOME_FAMILY = ("gnome", "cinnamon", "mate", "unity", "pantheon", "budgie")
 
     def __init__(self, port: int = 7900):
         self.port = int(port)
+        self.env_file = ENV_PROXY_FILE
+
+    @property
+    def backend(self) -> str:
+        return "gsettings" if self._gsettings_available() else "env"
 
     @property
     def available(self) -> bool:
+        return True
+
+    def _gsettings_available(self) -> bool:
         if not shutil.which("gsettings"):
             return False
         desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
@@ -63,13 +104,20 @@ class SystemProxy:
         return ok and "org.gnome.system.proxy" in schemas.splitlines()
 
     def mode(self) -> str:
-        if not self.available:
-            return "unknown"
+        if self.backend == "env":
+            return "manual" if self._env_proxy_active() else "none"
         return parse_gvariant_string(_gsettings_get("org.gnome.system.proxy", "mode"))
 
-    def is_enabled(self) -> bool:
-        if not self.available:
+    def _env_proxy_active(self) -> bool:
+        try:
+            text = self.env_file.read_text(encoding="utf-8")
+        except OSError:
             return False
+        return f"127.0.0.1:{self.port}" in text
+
+    def is_enabled(self) -> bool:
+        if self.backend == "env":
+            return self._env_proxy_active()
         mode = self.mode()
         if mode != "manual":
             return False
@@ -102,8 +150,8 @@ class SystemProxy:
             log.exception("无法备份系统代理设置")
 
     def apply(self) -> tuple[bool, str]:
-        if not self.available:
-            return False, "当前桌面环境不支持 GSettings 系统代理"
+        if self.backend == "env":
+            return self._apply_env()
         self._backup()
         ok = True
         for kind in ("http", "https", "socks"):
@@ -115,10 +163,30 @@ class SystemProxy:
         return True, f"系统代理已指向 127.0.0.1:{self.port}"
 
     def disable(self) -> tuple[bool, str]:
-        if not self.available:
-            return False, "当前桌面环境不支持 GSettings 系统代理"
+        if self.backend == "env":
+            return self._disable_env()
         ok = _gsettings_set("org.gnome.system.proxy", "mode", "none")
         return (True, "系统代理已关闭") if ok else (False, "关闭系统代理失败")
+
+    def _apply_env(self) -> tuple[bool, str]:
+        values = _env_proxy_values(self.port)
+        try:
+            self.env_file.parent.mkdir(parents=True, exist_ok=True)
+            lines = ["# 由 Cat Meta 写入；关闭系统代理时会删除此文件。"]
+            lines += [f"{key}={value}" for key, value in values.items()]
+            self.env_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        except OSError as exc:
+            return False, f"写入代理环境变量失败：{exc}"
+        _publish_session_env(values)
+        return True, "系统代理已写入会话环境（重新登录后对所有应用生效）"
+
+    def _disable_env(self) -> tuple[bool, str]:
+        try:
+            self.env_file.unlink(missing_ok=True)
+        except OSError as exc:
+            return False, f"移除代理环境变量失败：{exc}"
+        _publish_session_env({key: "" for key in _env_proxy_values(self.port)}, unset=True)
+        return True, "系统代理已关闭"
 
     def clear_backup(self) -> None:
         try:

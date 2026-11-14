@@ -141,11 +141,13 @@ class SettingsPage(BasePage):
         self.ipv6_switch = self._switch(False)
         self.mixed_port_spin = self._spin(7900, 1024, 65535)
         self.api_port_spin = self._spin(19098, 1024, 65535)
-        system_proxy_tip = "使用 GSettings 把桌面环境的 HTTP / HTTPS 代理指向本机"
-        if not self.controller.system_proxy.available:
-            self.system_proxy_switch.set_sensitive(False)
-            self.system_proxy_switch.set_tooltip_text("当前桌面环境不读取 GSettings 代理设置，请改用 TUN 模式")
-            system_proxy_tip = "当前桌面环境不支持 GSettings 系统代理，请改用 TUN 模式"
+        if self.controller.system_proxy.backend == "gsettings":
+            system_proxy_tip = "使用 GSettings 把桌面环境的 HTTP / HTTPS 代理指向本机"
+        else:
+            system_proxy_tip = "写入 http_proxy / https_proxy 环境变量，重新登录后对所有应用生效"
+            self.system_proxy_switch.set_tooltip_text(
+                "当前桌面没有统一的代理设置：写入 ~/.config/environment.d，重新登录后全部应用生效"
+            )
         rows = [
             SettingRow("系统代理", system_proxy_tip, self.system_proxy_switch),
             SettingRow("TUN 模式", "创建虚拟网卡接管全部流量，需要额外授权", self.tun_switch),
