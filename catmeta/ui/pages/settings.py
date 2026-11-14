@@ -12,6 +12,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk
 
 from ... import VERSION
+from ... import polkit
 from ...async_utils import run_async
 from ...controller import Controller
 from ...geodata import download_geodata, local_proxy_ports, status as geodata_status
@@ -172,8 +173,14 @@ class SettingsPage(BasePage):
         path_control.pack_start(choose_button, False, False, 0)
         self.tun_perm_label = label("检查中…", "row-subtitle")
         self.tun_auth_button = self._button("授权 TUN", self._authorize_tun, icon_name="system-lock-screen-symbolic")
+        self.tun_polkit_button = self._button("免密授权", self._install_tun_polkit, icon_name="dialog-password-symbolic")
+        self.tun_polkit_button.set_tooltip_text(
+            "TUN 启动时会用 resolvectl 配置 systemd-resolved 的 DNS，系统默认每次都要求输入密码；"
+            "点击后安装一条仅放行这 4 个动作的 polkit 规则"
+        )
         perm_control = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         perm_control.pack_start(self.tun_perm_label, False, False, 0)
+        perm_control.pack_start(self.tun_polkit_button, False, False, 0)
         perm_control.pack_start(self.tun_auth_button, False, False, 0)
         self.geo_label = label("检查中…", "row-subtitle")
         self.geo_button = self._button("下载数据", self._download_geo, icon_name="document-save-symbolic")
@@ -200,7 +207,7 @@ class SettingsPage(BasePage):
         rows = [
             SettingRow("mihomo 内核", "自动下载官方稳定版；也可以手动指定可执行文件", core_control),
             SettingRow("内核路径", "留空时自动在数据目录与 PATH 中查找", path_control),
-            SettingRow("TUN 权限", "TUN 需要 cap_net_admin 与 cap_net_raw 能力", perm_control),
+            SettingRow("TUN 权限", "需要 cap_net_admin / cap_net_raw；DNS 走 resolvectl 时还要系统授权", perm_control),
             SettingRow("Geo 数据", "GEOIP / GEOSITE 规则所需的数据库，首次启动会自动准备", geo_control),
             SettingRow("日志级别", "更详细的日志会占用更多磁盘空间", self.log_level_combo),
             SettingRow("延迟测试地址", "测速使用的 204 地址；需返回空响应", self.test_url_entry),
@@ -326,6 +333,8 @@ class SettingsPage(BasePage):
         if not core.binary:
             self.tun_perm_label.set_text("需要先安装内核")
             self.tun_auth_button.set_sensitive(False)
+            self.tun_polkit_button.set_sensitive(False)
+            self.tun_polkit_button.set_label("免密授权")
             return
         available = core.net_admin_available()
         self.tun_perm_label.set_text("已具备 TUN 权限" if available else "未授权")
@@ -334,6 +343,33 @@ class SettingsPage(BasePage):
             self.tun_auth_button.set_label("已授权")
         else:
             self.tun_auth_button.set_label("授权 TUN")
+        polkit_ready = polkit.rule_installed()
+        self.tun_polkit_button.set_sensitive(not polkit_ready)
+        self.tun_polkit_button.set_label("免密已启用" if polkit_ready else "免密授权")
+
+    def _install_tun_polkit(self) -> None:
+        def action() -> None:
+            run_async(
+                polkit.install_rule,
+                on_success=self._on_tun_polkit_done,
+                on_error=lambda exc: self.toast(f"免密授权失败：{exc}", error=True, timeout=8),
+                name="tun-polkit",
+            )
+
+        confirm(
+            self.get_toplevel(),
+            "启用 TUN 免密授权？",
+            "mihomo 的 TUN 会通过 resolvectl 配置 systemd-resolved 的 DNS，系统默认每次都要求密码。"
+            "这会在 /etc/polkit-1/rules.d 安装一条只放行 4 个 resolve1 动作、且只对当前用户生效的规则；"
+            "其它系统授权不受影响，随时可以删除该文件恢复默认。",
+            action,
+            confirm_label="授权",
+        )
+
+    def _on_tun_polkit_done(self, result) -> None:
+        ok, message = result if isinstance(result, tuple) else (False, str(result))
+        self._refresh_tun_status()
+        self.toast(message, success=ok, error=not ok, timeout=8)
 
     def _mark_dirty(self, *_args) -> None:
         if self._loading:

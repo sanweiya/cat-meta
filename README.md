@@ -55,6 +55,10 @@
 - Python 3.10+
 - GTK 3.24、PyGObject
 - 可选：XApp 1.0（Mint 上的托盘图标）、psutil（内核内存显示）、Requests（订阅/API 已随系统提供）
+- TUN 模式：mihomo 启动时会用 `resolvectl` 配置 systemd-resolved 的 DNS，系统默认每次都要
+  输入密码。设置 → 内核 → TUN 权限 里的“免密授权”会安装
+  `/etc/polkit-1/rules.d/49-cat-meta-tun.rules`，只放行 4 个 resolve1 动作且只对当前用户生效；
+  删除该文件即可恢复默认行为。
 
 安装依赖（Debian / Ubuntu / Linux Mint）：
 
