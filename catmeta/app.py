@@ -14,7 +14,7 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, Gio, GLib, Gtk
 
-from . import APP_ID, APP_NAME, VERSION
+from . import APP_ID, APP_NAME, VERSION, gsettings
 from .async_utils import run_async
 from .controller import Controller
 from .logging_setup import setup_logging
@@ -192,8 +192,10 @@ class CatMetaApplication(Gtk.Application):
         except Exception:
             pass
         for schema in ("org.cinnamon.desktop.interface", "org.gnome.desktop.interface"):
+            settings = gsettings.new(schema)
+            if settings is None:
+                continue
             try:
-                settings = Gio.Settings.new(schema)
                 if not settings.get_value("text-scaling-factor"):
                     continue
                 settings.connect("changed::text-scaling-factor", self._reload_css)

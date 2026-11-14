@@ -43,7 +43,11 @@ def parse_gvariant_string(value: str) -> str:
 
 
 class SystemProxy:
-    """使用 GSettings 控制系统代理；这是 Cinnamon / GNOME 的原生方式。"""
+    """使用 GSettings 控制系统代理；这是 Cinnamon / GNOME / MATE 的原生方式。"""
+
+    # 只有这些桌面会真正读取 org.gnome.system.proxy；XFCE、LXQt、KDE 等
+    # 桌面即使装了 schema 也不会生效，必须按不可用处理，避免“显示成功但无效”。
+    GNOME_FAMILY = ("gnome", "cinnamon", "mate", "unity", "pantheon", "budgie")
 
     def __init__(self, port: int = 7900):
         self.port = int(port)
@@ -51,6 +55,9 @@ class SystemProxy:
     @property
     def available(self) -> bool:
         if not shutil.which("gsettings"):
+            return False
+        desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
+        if desktop and not any(name in desktop for name in self.GNOME_FAMILY):
             return False
         ok, schemas = _run_gsettings(["list-schemas"])
         return ok and "org.gnome.system.proxy" in schemas.splitlines()

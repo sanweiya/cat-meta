@@ -141,8 +141,13 @@ class SettingsPage(BasePage):
         self.ipv6_switch = self._switch(False)
         self.mixed_port_spin = self._spin(7900, 1024, 65535)
         self.api_port_spin = self._spin(19098, 1024, 65535)
+        system_proxy_tip = "使用 GSettings 把桌面环境的 HTTP / HTTPS 代理指向本机"
+        if not self.controller.system_proxy.available:
+            self.system_proxy_switch.set_sensitive(False)
+            self.system_proxy_switch.set_tooltip_text("当前桌面环境不读取 GSettings 代理设置，请改用 TUN 模式")
+            system_proxy_tip = "当前桌面环境不支持 GSettings 系统代理，请改用 TUN 模式"
         rows = [
-            SettingRow("系统代理", "使用 GSettings 把 Cinnamon 的 HTTP / HTTPS 代理指向本机", self.system_proxy_switch),
+            SettingRow("系统代理", system_proxy_tip, self.system_proxy_switch),
             SettingRow("TUN 模式", "创建虚拟网卡接管全部流量，需要额外授权", self.tun_switch),
             SettingRow("允许局域网连接", "允许同一网络中的其他设备通过本机代理上网", self.lan_switch),
             SettingRow("IPv6", "在内核中启用 IPv6 解析与代理", self.ipv6_switch),

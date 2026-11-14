@@ -8,3 +8,6 @@ venv/
 bin/mihomo
 *.log
 .DS_Store
+
+# 本机显示电源策略（不入库）
+docs/display-power-policy.md

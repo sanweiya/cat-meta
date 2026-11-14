@@ -162,6 +162,9 @@ class HomePage(BasePage):
         group = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         group.get_style_context().add_class("native-group")
         self.proxy_switch = self._quick_row(group, "系统代理", "将桌面环境的 HTTP / HTTPS 代理指向本机", self._on_system_proxy)
+        if not self.controller.system_proxy.available:
+            self.proxy_switch.set_sensitive(False)
+            self.proxy_switch.set_tooltip_text("当前桌面环境不读取 GSettings 代理设置，请改用 TUN 模式")
         self.tun_switch = self._quick_row(group, "TUN 模式", "接管全部流量，需要网络管理权限", self._on_tun)
         self.lan_switch = self._quick_row(group, "允许局域网", "允许同一网络内的其他设备使用此代理", self._on_lan)
         self.body.pack_start(group, False, False, 0)

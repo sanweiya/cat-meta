@@ -5,7 +5,9 @@ from __future__ import annotations
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gio, Gtk, Pango
+from gi.repository import Gtk, Pango
+
+from .. import gsettings
 
 FONT_BASE_POINTS = 10.0
 
@@ -22,8 +24,10 @@ def ui_font_scale() -> float:
         pass
     scaling = 1.0
     for schema in ("org.cinnamon.desktop.interface", "org.gnome.desktop.interface"):
+        settings = gsettings.new(schema)
+        if settings is None:
+            continue
         try:
-            settings = Gio.Settings.new(schema)
             settings.get_value("text-scaling-factor")
             scaling = float(settings.get_double("text-scaling-factor") or 1.0)
             break
@@ -34,8 +38,9 @@ def ui_font_scale() -> float:
 
 def monospace_font(*, ui_scale: bool = True) -> Pango.FontDescription:
     """系统等宽字体；可选叠加界面字体缩放。"""
+    settings = gsettings.new("org.gnome.desktop.interface")
     try:
-        font_name = Gio.Settings.new("org.gnome.desktop.interface").get_string("monospace-font-name")
+        font_name = settings.get_string("monospace-font-name") if settings is not None else ""
     except Exception:
         font_name = ""
     desc = Pango.FontDescription.from_string(font_name or "Monospace 10")

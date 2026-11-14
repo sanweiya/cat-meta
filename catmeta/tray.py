@@ -67,7 +67,7 @@ class TrayIcon:
             log.info("使用 XApp 状态图标%s", "（原生菜单）" if self._native_menu else "（自绘菜单回退）")
             return
         except Exception:
-            log.info("XApp 状态图标不可用，尝试 Gtk.StatusIcon", exc_info=True)
+            log.debug("XApp 状态图标不可用，改用 Gtk.StatusIcon", exc_info=True)
         try:
             status = Gtk.StatusIcon.new_from_icon_name("cat-meta")
             status.set_tooltip_text("Cat Meta")
@@ -78,9 +78,39 @@ class TrayIcon:
             self._native_menu = True
             self._backend = "gtk"
             self.available = True
+            # XFCE/LXQt 的面板不一定有 XEmbed 通知区域（XFCE 需装“通知区域”
+            # 插件，LXQt 根本不支持）。没有宿主时图标不会显示，此时必须把
+            # 托盘判为不可用，否则“关闭到托盘/启动时最小化”会把窗口藏到无处。
+            GLib.timeout_add(600, self._verify_xembed)
         except Exception:
             log.exception("无法创建系统托盘图标")
             self.available = False
+
+    def _verify_xembed(self) -> bool:
+        icon = self._status_icon
+        if icon is None or self._backend != "gtk":
+            return False
+        try:
+            embedded = bool(icon.is_embedded())
+        except Exception:
+            embedded = True
+        if embedded:
+            return False
+        log.info("面板没有 XEmbed 托盘宿主，禁用托盘图标")
+        self.available = False
+        self._native_menu = False
+        try:
+            icon.set_visible(False)
+        except Exception:
+            pass
+        self._status_icon = None
+        window = getattr(self.app, "window", None)
+        if window is not None:
+            try:
+                window.present_window()
+            except Exception:
+                log.debug("恢复主窗口失败", exc_info=True)
+        return False
 
     def _on_activate(self, _icon, button: int, _time: int) -> None:
         # 设置 secondary menu 后，XApp 不会为右键发出 activate；这里只在
