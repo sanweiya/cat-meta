@@ -520,14 +520,16 @@ class MainWindow(Gtk.ApplicationWindow):
             self._toast_source = 0
         self.toast_label.set_text(message)
         context = self.toast_box.get_style_context()
-        context.remove_class("error")
-        context.remove_class("success")
+        # 不要用 "error"/"success" 这类通用类名：Greybird 等主题把 .error
+        # 当成消息对话框样式，会给 label 套上蓝底浅字。这里用带前缀的类名。
+        context.remove_class("toast-error")
+        context.remove_class("toast-success")
         if error:
-            context.add_class("error")
+            context.add_class("toast-error")
             self.toast_icon.set_from_icon_name("dialog-error-symbolic", Gtk.IconSize.BUTTON)
             timeout = max(timeout, 5.0)
         elif success:
-            context.add_class("success")
+            context.add_class("toast-success")
             self.toast_icon.set_from_icon_name("dialog-information-symbolic", Gtk.IconSize.BUTTON)
         else:
             self.toast_icon.set_from_icon_name("dialog-information-symbolic", Gtk.IconSize.BUTTON)
