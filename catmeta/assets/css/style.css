@@ -56,9 +56,28 @@ headerbar button.titlebutton {
 
 /* ---------------- 侧栏 ---------------- */
 .sidebar {
-  min-width: 200px;
+  min-width: 160px;
   background-color: shade(@theme_bg_color, 0.97);
   border-right: 1px solid @borders;
+}
+
+/* 拖拽热区是透明的 overlay，不占布局；只通过描边颜色回应悬停/拖动，
+ * 避免出现额外色条或让工具栏横线与描边脱开。 */
+.sidebar.sidebar-resize-hover {
+  border-right-color: alpha(@theme_selected_bg_color, 0.75);
+}
+
+.sidebar.sidebar-resize-active {
+  border-right-color: @theme_selected_bg_color;
+}
+
+/* 拖拽热区自身带窗口，用于把光标限制在描边附近；背景必须透明，
+ * 否则会在描边上盖出一条色带。 */
+.sidebar-resize-hitbox {
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
 }
 
 .sidebar-scroll {

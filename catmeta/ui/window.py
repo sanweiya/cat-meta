@@ -21,7 +21,7 @@ from .pages.profiles import ProfilesPage
 from .pages.proxies import ProxiesPage
 from .pages.rules import RulesPage
 from .pages.settings import SettingsPage
-from .sidebar import Sidebar
+from .sidebar import Sidebar, SidebarSplit, clamp_sidebar_width
 from .widgets.common import block_scroll, icon, label
 
 MIN_WINDOW_WIDTH = 810
@@ -76,14 +76,11 @@ class MainWindow(Gtk.ApplicationWindow):
             pass
 
         self._build_header()
-        root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         self.sidebar = Sidebar(
             controller,
             on_navigate=self.navigate,
             on_toggle_core=self.toggle_core,
         )
-        self.sidebar.set_size_request(int(controller.settings.sidebar_width or 200), -1)
-        root.pack_start(self.sidebar, False, False, 0)
 
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.content_overlay = Gtk.Overlay()
@@ -97,8 +94,14 @@ class MainWindow(Gtk.ApplicationWindow):
         self.pages: dict[str, Any] = {}
         self._create_pages()
         content.pack_start(self.stack, True, True, 0)
-        root.pack_start(self.content_overlay, True, True, 0)
-        self.add(root)
+        # 固定宽度容器 + 骑跨在描边上的透明拖拽热区。
+        self.sidebar_split = SidebarSplit(
+            self.sidebar,
+            self.content_overlay,
+            controller.settings.sidebar_width,
+            on_width_changed=self._on_sidebar_width_changed,
+        )
+        self.add(self.sidebar_split)
 
         self.connect("delete-event", self._on_delete)
         self.connect("key-press-event", self._on_key_press)
@@ -577,11 +580,22 @@ class MainWindow(Gtk.ApplicationWindow):
         self._geometry_source = GLib.timeout_add(600, self._save_geometry)
         return False
 
+    def _on_sidebar_width_changed(self, width: int) -> None:
+        # 直接写 settings，不走 controller.save_settings，避免每拖一下都
+        # 触发设置页刷新或内核重载。
+        try:
+            self.controller.settings.update({"sidebar_width": clamp_sidebar_width(width)})
+        except Exception:
+            pass
+
     def _save_geometry(self) -> bool:
         self._geometry_source = 0
         try:
             maximized = self.is_maximized()
-            values = {"window_maximized": maximized}
+            values = {
+                "window_maximized": maximized,
+                "sidebar_width": clamp_sidebar_width(self.sidebar_split.width()),
+            }
             if not maximized:
                 width, height = self.get_size()
                 gdk_window = self.get_window()
@@ -630,6 +644,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def prepare_quit(self) -> None:
         self._quitting = True
+        self.sidebar_split.save_now()
         self._save_geometry()
 
     def set_tun_from_tray(self, enabled: bool) -> None:
