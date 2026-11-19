@@ -227,6 +227,10 @@ curl -H "Authorization: Bearer <secret>" http://127.0.0.1:19098/version
 curl --proxy http://127.0.0.1:7900 https://www.gstatic.com/generate_204 -I
 ```
 
+## 开发与接手
+
+维护者文档见 [docs/handover/README.md](docs/handover/README.md)，包含架构、配置/数据、界面扩展、测试与发布流程。
+
 ## 已知限制
 
 - 仅支持 Linux / X11 与 Wayland（通过 GTK 3）；不提供 Windows/macOS 版本。
